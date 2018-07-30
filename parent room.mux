@@ -2,12 +2,18 @@
 ################################################################################
 ### Global Room Parent #########################################################
 
-Written for TinyMux
+https://github.com/lcanady/CrescentMoonMux
 
 Formatted for Muxify: http://muxify.musoapbox.net/editor.html
+Shoutout to https://github.com/thenomain for his formatting.
 
 Usage
-    @parent <dbref>=#16
+    @parent <target room dbref>=<parent room dbref> 
+
+And in your .config file add the following line to automatically assign your
+room parent to any new rooms created:
+    
+    room_parent <parent room dbref>
 
 This is the parent room for Crescent Moon Mux. It's set through the .config file
 as parent_room and should be automatically set when new rooms are created. 
@@ -15,9 +21,42 @@ as parent_room and should be automatically set when new rooms are created.
 Requirements:
     header(<text>):         Game's pretty header function.
     idletime(<player>):     Checks a player's idle time.
-    shortdesc(<player>):    Display a player's &short-desc attribute 
+    shortdesc(<player>):    Display a player's &short-desc attribute
+    issecondary(<exit>):    Checks for a secondary exit attribute
+    istertiary(<exit>):     Checks for tertiary exit attritbute
 
+--------------------------------------------------------------------------------
+--- Setup ----------------------------------------------------------------------
+*/
 
+@dig Global Room Parent <GRP>
+@fo me=&d.grp=[search( name=Global Room Parent <GRP> )]
+@fo me= &d.fgo [v( d.grp )]=[search( name=Global Function Object )]
+@set [v( d.grp )]=safe floating halt 
+
+/*
+--------------------------------------------------------------------------------
+--- configuration --------------------------------------------------------------
+
+These are the settings to change the basic apperance of your Global Room Parent
+
+*/
+
+// .header related config settings for @conformat & @exitformat
+
+&config.color     [v( d.grp )]= r
+&config.hcolor    [v( d.grp )]= hr
+&config.text      [v( d.grp )]= h
+&config.filler    [v( d.grp )]= -
+&config.lsep      [v( d.grp )]= <<  
+&config.rsep      [v( d.grp )]= >>   
+
+// Exit related config settings
+    
+&config.secondary [v( d.grp )] = c
+&config.tertiary  [v( d.grp )] = m 
+
+/*
 --------------------------------------------------------------------------------
 --- Name Format ----------------------------------------------------------------
 
@@ -26,12 +65,12 @@ the owner of the room can see the dbref and flags list.
 
 */
 
-@NameFormat #16=
-     header(
-            [name(%!)]
+@NameFormat [v( d.grp )]=
+    header( 
+            [name( %! )]
             [if(
-                or(match(%#,owner(%!)),orflags(%#,wWZ)),
-                %([num(me)][flags(me)]%)
+                or( match( %#, owner( %! ) ), orflags( %#, wWZ )),
+                %([num( me )][flags( %! )]%)
             )] 
      )
 
@@ -44,10 +83,10 @@ Room contents are split up into two parts, players and things.
 
 */
 
-@ConFormat #16=     
+@ConFormat [v( d.grp )]=     
     [u( .header, Characters )]
     [iter(  
-        filter( filter.players, %# %0),
+        filter( filter.players, cat( %#, %0 )),
         %r[u( format.character, ## )]
     )]
     [if( 
@@ -74,19 +113,31 @@ Exits can have two optional attributes:
 
 */
 
-@ExitFormat #16= 
+@exitformat #16= iter(%0, get(##/secondary))
+
+
+@ExitFormat [v( d.grp )]= 
     [u( .header, Exits )]%r
     [columns(
         iter( %0, 
-
-            // Check for secondary and tertiary exits.
-
             switch( 1,                  
-                hasattr( ##, secondary ), 
-                    edit( name(##), <, %ch%cc<%cn, >, %ch%cc>%cn),
-                hasattr(##,tertiary),
-                    edit(name(##),<,%ch%cm<%cn,>,%ch%cm>%cn),
-                edit(name(##),<,%ch%cr<%cn,>,%ch%cr>%cn)
+                issecondary( ## ), 
+                    edit( 
+                        name( ## ), 
+                        <, ansi( v( config.secondary ), < ), 
+                        >, ansi( v( config.secondary ), > )
+                    ),
+                istertiary( ## ),
+                    edit( 
+                        name( ## ), 
+                        <, ansi( v( config.tertiary ), < ), 
+                        >, ansi( v( config.tertiary ), > ) 
+                    ),
+                edit(
+                    name( ## ),
+                    <, ansi( v( config.hcolor ), < ),
+                    >, ansi( v( config.hcolor ), > )
+                )
             ),,|
         )
         ,26,|
@@ -110,7 +161,7 @@ filter( filter.players, %0 )
 
 */
 
-&filter.players #16=
+&filter.players [v( d.grp )]=
     and(
         hastype( %0, player ),
         not( hasflag( %0, dark ))
@@ -129,8 +180,9 @@ filter( filter.objects, %0 )
 
 */
 
-&filter.objects #16=
+&filter.objects [v( d.grp )]=
     hastype( %0, thing )
+
 
 /*
 --------------------------------------------------------------------------------
@@ -143,15 +195,24 @@ Shows a formatted header for @conformat and @exitformat
 */
     
 
-&.header #16=
+&.header [v( d.grp )]=
     strcat(
-        ansi( r, ---, n ),
+        ansi( 
+            v( config.color ), 
+            [repeat( v( config.filler ), 3 )], 
+            n 
+        ),
         ljust( 
-            ansi( hr, <<, h, %b%0%b, hr, >>, n ), 
+            ansi( 
+                v( config.hcolor ), v( config.lsep ), 
+                v( config.text ), %b%0%b, 
+                v( config.hcolor), v( config.rsep ), n 
+            ), 
             sub(78,3), 
-            ansi(r,-,n)
+            ansi( v( config.color ), v( config.filler ), n )
         )
     )
+
 
 /*
 --------------------------------------------------------------------------------
@@ -165,7 +226,7 @@ also show the dbref of a player.
 
 */
 
-&format.moniker #16=
+&format.moniker [v( d.grp )]=
         [moniker(%0)][if(orflags(%1,wW),%(%0%))]
 
 
@@ -180,7 +241,7 @@ Formats character information for display to the room.
 
 */
 
-&format.character #16=
+&format.character [v( d.grp )]=
     cat(
         ljust( u( format.moniker, %0, %1 ) ,22),
         ljust( idletime(%0), 8 ),
