@@ -51,7 +51,7 @@ These are the settings to change the basic apperance of your Global Room Parent
 &config.lsep      [v( d.grp )]= <<  
 &config.rsep      [v( d.grp )]= >>   
 
-// Exit related config settings
+// Color configuration for exits with &secondary or &tertiary attributes
     
 &config.secondary [v( d.grp )] = c
 &config.tertiary  [v( d.grp )] = m 
