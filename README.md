@@ -1,5 +1,4 @@
 # CrescentMoonMux
 Code for Crescent Moon Mux CrescentMoonMux.com
 
-Most of this code has been formatted to work with muxify(http://muxify.musoapbox.net/editor.html)
-This code comes as is, and may reqiure some assembly if you plan on using it for your own projects.
+I'm between formatters right now and using  tool I built for myself. I had hope in Muxify, but alas it didn't work out.  If I have time later I'll make it available here on Github probably.
