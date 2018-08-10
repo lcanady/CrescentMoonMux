@@ -1,0 +1,264 @@
+#/
+##############################################################################
+### Character Generation Merits Room #########################################
+
+https://github.com/lcanady/CrescentMoonMux
+
+This is the merit setting chargen room for Crescent Moon Mux
+
+Requires:
+    Global Room Parent <GRP>
+
+
+------------------------------------------------------------------------------
+--- @desc --------------------------------------------------------------------
+
+The room @desc is broken up into 4 parts; The intro, the 'stat block',
+directions and footer instrutctions.
+/#
+
+@desc here=
+    %r%t[u(intro)]%r%r[u( #54/block.merits, %#, getstat( %#/template ))]%r%r
+    %b%b%chMerit points left:%cn [get(%#/_mpoints)]%r
+    [repeat(%cr-%cn,78)]%r%r
+    Type '%chstat <stat>%cn' for more information on a merit.%R
+    Type '%chMerits%cn' to see your list of available merits.%r
+    Type '%chset <merit%(instance%)> to <level>%cn' to asign merit points.%r%r
+    [u( .footer)]%r
+-
+
+@va here=#14
+-
+#/
+------------------------------------------------------------------------------
+--- Intro Text ---------------------------------------------------------------
+/#
+
+&intro here= In this room we're going to set your character's merits.  You begin with 10 points to spend. Make sure to review %chstat <stat>%cn to see if a merit is available at character generation only so you don't miss out!
+-
+
+
+#/
+------------------------------------------------------------------------------
+--- .footer ------------------------------------------------------------------
+/#
+
+&.footer here=
+    Type '%chNext%cn' to continue to [eval( default( me/next, the next step. ))]%r
+    Type '%chBack%cn' to return to [eval( default( me/previous, the previous step. ))] %r
+    Type '%chrestart%cn' to begin this step from the beginning again.%r
+    Type '%chabort%cn' to leave character generation.
+-
+
+
+
+
+#/
+==============================================================================
+=== Command: Merits ==========================================================
+
+Lists all of the merits available to the character at the time the command
+is entered.
+
+/#
+
+&c.merits here=$^\+?merit[s]?(.*)?$:
+    @pemit %#=
+        [setq(a,
+            u(
+                .pages,
+                u( f.merits.list, %# ),
+                u( .height )
+            )
+        )]
+        [if(
+            and(
+                gte( u( .entry, %1) ,1),
+                lte( u( .entry, %1 ),%qa)
+            ),%r
+            You have %ch[default( %#/_mpoints, 0)]%cn merit points left.%r
+            Merits with a star '%ch*%cn' require an instance.%r
+            [pages( u( f.merits.list, %# ), u( .height ), u( .entry, %1), Available Merits List )]%r
+            Type '%chstat <stat>%cn' for more information.%r
+            Type '%chmerits <page #>%cn' jump to a specific page.,
+            pemit( %#, u( .msg, Merits, That's not a valid page number. ))
+        )];
+-
+
+&.height here=sub(height(%#),5)
+
+-
+
+@set here/c.merits=regex
+-
+
+#/
+==============================================================================
+=== Command: Set =============================================================
+
+
+
+    0: whole command string
+    1: merit name
+    2: (instance)
+    3: value
+
+    qp: prereq check
+    qi: cleaned instance (if any)
+    qs: statpath
+    ql: instance list (if any)
+    qv: value list
+    qc: current level of merit
+
+
+/#
+
+&c.set here=$^\+?set\s(.*)to(.*)$:
+
+    [setq(i, trim(edit( after(%1,%( ), %(,,%),,) ))]
+    [setq(s, u( #28/f.statpath-validate-name, trim(before( %1, %( ) )) )]
+    [setq(p,
+        and(
+            u( #28/f.prereq-check-other, %#, %qs, %qi ),
+            u( #28/f.prereq-check-template, %#, %qs )
+        )
+    )]
+    [setq(l, after( get( %va/%qs ), | ))]
+    [setq(v, before( get( %va/%qs ), | ))]
+    [setq(c, getstat(%#/%1))];
+
+
+    @switch [match( first( %qs, . ), MERIT )]
+            [or(
+                match(%ql, capitalize(%qi), . ),
+                strmatch(%ql,),
+                and( eq(comp(%ql,*),0), gt(strlen(%qi),0) )
+            )]
+            [or(
+                neq(match(%qv, [trim(%2)], . ),0),
+                eq(%2,0)
+            )]
+
+            [t( %qp )]
+            [gte( sub( get(%#/_mpoints), sub(%2,%qc) ), 0 )]=
+    0????, {    @pemit %#= [u( .msg, Merits, That's not a valid merit. )] },
+    10???, {    @pemit %#= [u( .msg, Merits, That's not a good instance %(%ch[trim(%qi)%cn%) )] },
+    110??, {    @pemit %#= [u( .msg, Merits, That's not a good value. )] },
+    1110?, {    @pemit %#= [u( .msg, Merits, Access Denied.)] },
+    11110, {    @pemit %#= [u( .msg, Merits, You don't have enough points left. )] },
+    11111, {
+                @if [eq(%2,0)] =
+                {
+                    &_mpoints %#=[add( get(%#/_mpoints), %qc )];
+                    @fo %#=stat/set %1=;
+                    @wait .1= @pemit %#=You have %ch[get(%#/_mpoints)]%cn merit points left.
+                },
+                {
+                    &_mpoints %#=[sub(get(%#/_mpoints), sub(%2,%qc) )];
+                    @fo %#=stat/set %1=%2;
+                    @wait .1= @pemit %#=You have %ch[get(%#/_mpoints)]%cn merit points left.
+                }
+     };
+
+
+
+-
+@set here/set=regex
+
+-
+
+#/
+==============================================================================
+=== Command: Restart =========================================================
+
+/#
+
+&c.restart here=$^\+?restart$:
+    @dolist lattr(%#/_merit.*)={&## %#=;};
+    &_mpoints %#=10;
+    @pemit %#=[u( .msg, Merits, Your merits have been reset.)]
+-
+@set here/c.restart=regex
+
+
+#/
+------------------------------------------------------------------------------
+--- .entry -------------------------------------------------------------------
+
+
+/#
+
+&.entry here=if( trim( %0 ), trim( %0 ), 1 )
+
+-
+
+
+#/
+------------------------------------------------------------------------------
+--- f.merits.list ------------------------------------------------------------
+
+Builds a list of merits a vailable to the character at the time of the
+command. Underlines merits that are tagged with the character's template
+
+    qt: tags
+    qn: statpath
+
+/#
+
+&f.merits.list here=
+
+    [strcat(
+        setq( 0,
+            iter(
+                setdiff(lattr(%va/MERIT*),MERIT.SANCTITY_OF_MERITS),
+                [setq( t, get(#15/tags.##))]
+                [if(
+                    and(
+                        u( #28/f.prereq-check-other,%0,##,* ),
+                        u( #28/f.prereq-check-template, %#, ## ),
+                        if(
+                            %1,
+                            match( %qt, %1, . ),
+                            1
+                        )
+
+                    ),
+                    [rest(before( ##, _()), . )]:
+                    [edit(get(%va/##),%b,_)]
+                )]
+            )
+        ),
+        table(
+            iter(
+                trim(sort(%q0,a)),
+                [setq( n, u( #28/f.statpath-validate-name,edit(before(##,:),_,%b )))]
+                [setq( t, get(#15/tags.%qn))]
+                [ljust(
+                    [if(
+                        match( %qt, getstat(%#/template), . ),
+                        %ch%cu[capitalize(edit(before(##,:),_,%b))]%cn,
+                        %ch[capitalize(edit(before(##,:),_,%b))]%cn
+                    )]
+                    [if(words(after(##,|),.),%ch%(*%)%cn)],
+                    sub(37,strlen([edit( after( before(##,|),:), ., %b)])),
+                    %ch%cx.%cn
+                )]%ch[edit( after( before(##,|),:), ., %b)]%cn,,~
+            ),38,78,~
+        )
+    )]
+
+-
+
+#/
+------------------------------------------------------------------------------
+--- .pages -------------------------------------------------------------------
+
+Maximum page count.
+
+/#
+
+&.pages here=   [setq(y,0)]
+                [trim(iter(%0,setq(y,add(%qy,1)),%r))]
+                [setq(z, ceil(fdiv( %qy, %1 )))]%qz
+-
+

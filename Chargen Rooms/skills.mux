@@ -1,0 +1,306 @@
+#/
+##############################################################################
+### Character Generation Skills Room #########################################
+
+https://github.com/lcanady/CrescentMoonMux
+
+This is the Skill setting chargen room for Crescent Moon Mux
+
+Requires:
+    Global Room Parent <GRP>
+
+
+------------------------------------------------------------------------------
+--- @desc --------------------------------------------------------------------
+
+The room @desc is broken up into 4 parts; The intro, the 'stat block',
+directions and footer instrutctions.
+/#
+
+@desc here=
+    %r%t[u(intro)]%r%r[u( #54/block.skills, %#, getstat( %#/template ))]%r%r%b%b
+    [ljust(%ch%cuPoints:%cn %ch[default(%#/_smental,0)]%cn,24)]%b
+    [ljust(%ch%cuPoints:%cn %ch[default(%#/_sphysical,0)]%cn,24)]%b
+    [ljust(%ch%cuPoints:%cn %ch[default(%#/_ssocial,0)]%cn,24)]%r%r
+    %b%b%chSkill Specialties left:%cn [get(%#/_spec)]%r
+    [repeat(%cr-%cn,78)]
+    %r%rType '%chChoose <pms>,<mps>,<etc>%cn' to set your skill priorities.%cn%r
+    Type '%chset <skill> to <level>%cn' to assign skill points.%r
+    Type '%chspecialty <skill>=<specialty>%cn' to add a skill specilalty.%r
+    Type '%chspecialty/remove <skill>=<specialty>%cn' to remove a skill specialty.%r%r
+    [u( .footer)]%r
+-
+
+@va here=#14
+-
+#/
+------------------------------------------------------------------------------
+--- Intro Text ---------------------------------------------------------------
+/#
+
+&intro here= In this room we're going to set your character's skills. There are three categories of skills, %chP%cnhysical, %chM%cnental and %chS%cnocial.  First you're going to need to set your skill priorities %(primary, secondary and tertiary%)
+-
+
+
+#/
+------------------------------------------------------------------------------
+--- .footer ------------------------------------------------------------------
+/#
+
+&.footer here=
+    Type '%chNext%cn' to continue to [eval( default( me/next, the next step. ))]%r
+    Type '%chBack%cn' to return to [eval( default( me/previous, the previous step. ))] %r
+    Type '%chrestart%cn' to begin this step from the beginning again.%r
+    Type '%chabort%cn' to leave character generation.
+-
+
+
+#/
+==============================================================================
+=== Command: Set =============================================================
+
+Syntax:
+    set <skill> to <number>
+
+Sets a skill to a number between 1 and 5 depending on the available
+points of the character.  Basically a wrapper for Thenomian'a GMCCG library.
+
+1: Stat name
+2: Stat value
+
+q0: difference from old value to new.
+q1: trim and tidy version of %1.
+q2: Attribute category (physcial|mental|social)
+
+/#
+
+&c.set here=$^\+?set(.+)to(.+)$:
+
+## Have they started chosen their skill priorities yet?
+
+    @assert [hasattr( %#, _smental )] =
+        @pemit %# =
+            [u( .msg,
+                Skills,
+                Please '%chchoose%cn' your skill priorities first.
+            )];
+
+    [setq( 0,
+        sub(
+            getstat( %#/[trim( %1, b )]),
+            %2
+        )
+    )];
+    [setq(1, trim( %1,b ))]
+    [setq( 2,
+        if(
+            match( statpath( %#/[trim(%1,b)] ), SKILL, . ),
+            switch(1,
+                hastag?( %q1, physical ),
+                physical,
+                hastag?( %q1, mental ),
+                mental,
+                hastag?( %q1, social ),
+                social
+            )
+        )
+    )];
+
+## Does the entry pass a few validation tests?
+
+    @switch [t( words( %q2 ))]
+            [and( gte( %2, 1 ),lte( %2, 5 ))]
+            [gte( add( get( %#/_s%q2 ), %q0 ), 0 )] =
+        0??, { @pemit %#= [u( .msg, Skills, That's not a valid skill. )]},
+        10?, { @pemit %#= [u( .msg, Skills, That's not a valid value. )]},
+        110, { @pemit %#= [u( .msg, Skills, You don't have enough %ch%q2%cn points left. )]},
+        111, { &_s%q2 %#=[add(get(%#/_s%q2),%q0)];
+                @fo %#=stat/set %1=%2;
+                @wait .1=@pemit %#= You have %ch[get(%#/_s%q2)]%cn %ch%q2%cn skill points left.
+        };
+
+-
+
+@set here/c.set=regex
+-
+
+
+#/
+==============================================================================
+=== Command: Restart =========================================================
+
+Syntax:
+    restart
+
+Sets all of the character's attributes back to default values/
+
+/#
+
+&c.restart here=$^\+?restart$:
+
+    @assert [hasattr( %#, _smental )]=
+        @pemit %#= [u( .msg, Restart, You don't have anything to restart.)];
+
+    @dolist [lattr( %#/_SKILL.*)] = { &## %#= };
+    @pemit %#=[u( .msg, Restart, Skills have been reset.)];
+    &_sphysical %#=;
+    &_smental %#=;
+    &_ssocial %#=;
+    &_spec %#=;
+-
+
+@set here/c.restart=regex
+-
+
+#/
+==============================================================================
+=== Command: Specialty =======================================================
+
+Syntax:
+    specialty[/switch] <skill>=<specialty>
+
+Manages the character's skill specialties
+
+0: Entire input string ( specialty survival=urban )
+1: Optional switch
+2: Skill
+3: Specialty
+
+/#
+
+&c.specialty here=$^\+?spe[cialty]+?(\/.+)?\s(.+)\=(.+)$:
+
+    [setq( 0, rest( statpath(%#/%2),. ) )];
+
+    @switch [words(%1)]
+            [match( first( statpath(%#/%2), . ), SKILL )]
+            [gt( getstat( %#/%2 ),0 )]
+            [not( hasattr(%#,_skill.[%q0].[%3]) )]
+            [gte(sub( get( %#/_spec ),1 ),0 )]=
+    ?00??, { @pemit %#=[u( .msg, Specialty, That's not a valid skill. )] },
+    010??, { @pemit %#=[u( .msg, Specialty, You have to have dots in a skill to take a specialty. )] },
+    011?0, { @Pemit %#=[u( .msg, Specialty, You don't have enough specialties left.)] },
+    01111, { [setstat(%#/%2.%3,1)];
+            &_spec %#=[dec(get(%#/_spec))];
+            @pemit %#=
+                [u( .msg,
+                    Specialty,
+                    Specialty %ch[capitalize(%3)]%cn added to skill: [statname(%2)]
+                )]%r
+                [u( .msg, Specialty, You have %ch[get(%#/_spec)]%cn specialty points left. )];
+    },
+    01101, { @pemit %#= [u( .msg, Specialty, You already have that specialty. )] },
+    1111?, { @pemit %#= [u( .msg, Specilaty, You don't have that specialty. )] },
+    1110?, { @if match( lcstr(%1), /remove) =
+            {
+                &_[statpath(%#/%2)].%3 %#=;
+                &_spec %#=[inc( get( %#/_spec ))];
+                @pemit %#=[u( .msg, Specialty, Specialty %ch[capitalize(%3)]%cn removed. )]
+            },
+            {
+                @pemit %#=[u( .msg, Specialty, Unrecognized switch. )]
+            }
+    }
+
+-
+
+
+
+
+#/
+==============================================================================
+=== Command: Choose ==========================================================
+
+Syntax:
+    choose <three letter code>
+
+Allows the player to choose the priorities of their attributes between
+Primary, Secondary and tertiary.
+
+/#
+
+
+&c.choose here=$^\+?choose(.*):
+
+    @assert not(hasattr(%#,_smental))=
+        @pemit %#=[u( .msg, Choose, You've already chosen your%b
+            skill priorities.  Type '%chRestart%cn' to start over. )];
+
+
+    @switch [lcstr(trim(%1,b))]=
+    pms,{   &_sphysical %#=11;
+            &_smental %#=7;
+            &_ssocial %#=4;
+            &_spec %#=3;
+            @pemit %#=
+                [u( .msg, Choose,
+                    Your skill priorities have been set to Physical\, Mental\, Social.
+                )]%r
+                [u( .msg, Choose,
+                    Type '%chlook%cn' to see your skill points remaining.
+                )]
+        },
+    mps,{   &_sphysical %#=7;
+            &_smental %#=11;
+            &_ssocial %#=4;
+            &_spec %#=3;
+            @pemit %#=
+                [u( .msg, Choose,
+                    Your skill priorities have been set to Mental\, Physical\, Social.
+                )]%r
+                [u( .msg, Choose,
+                    Type '%chlook%cn' to see your skill points remaining.
+                )]
+        },
+    spm,{   &_sphysical %#=7;
+            &_smental %#=4;
+            &_ssocial %#=11;
+            &_spec %#=3;
+            @pemit %#=
+                [u( .msg, Choose,
+                    Your skill priorities have been set to Social\, Physical\, Mental.
+                )]%r
+                [u( .msg, Choose,
+                    Type '%chlook%cn' to see your skill points remaining.
+                )]
+        },
+    psm,{   &_sphysical %#=11;
+            &_smental %#=4;
+            &_ssocial %#=7;
+            &_spec %#=3;
+            @pemit %#=
+                [u( .msg, Choose,
+                    Your skill priorities have been set to Physical\, Social\, Mental.
+                )]%r
+                [u( .msg, Choose,
+                    Type '%chlook%cn' to see your skill points remaining.
+                )]
+        },
+    msp,{   &_sphysical %#=4;
+            &_smental %#=11;
+            &_ssocial %#=7;
+            &_spec %#=3;
+            @pemit %#=
+                [u( .msg, Choose,
+                    Your skill priorities have been set to Mental\, Social\, Physical.
+                )]%r
+                [u( .msg, Choose,
+                    Type '%chlook%cn' to see your skill points remaining.
+                )]
+        },
+    smp,{   &_physical %#=4;
+            &_mental %#=7;
+            &_social %#=11;
+            &_spec %#=3;
+            @pemit %#=
+                [u( .msg, Choose,
+                    Your skill priorities have been set to Social\, Mental\, Physical.
+                )]%r
+                [u( .msg, Choose,
+                    Type '%chlook%cn' to see your skill points remaining.
+                )]
+        },
+        { @pemit %#=[u( .msg, Choose, I don't recognize that combination. )] }
+-
+@set here/c.choose = regex
+

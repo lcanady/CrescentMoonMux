@@ -1,0 +1,70 @@
+#/
+##############################################################################
+### Character Generation Bio Room  ###########################################
+
+https://github.com/lcanady/CrescentMoonMux
+
+This is the code for the bio section of character generation.
+
+Requires:
+    Global Room Parent <GRP>
+
+
+------------------------------------------------------------------------------
+--- @desc --------------------------------------------------------------------
+
+The room @desc is broken up into 4 parts; The intro, the 'stat block',
+directions and footer instrutctions.
+/#
+
+
+
+@desc here=
+    %r%t[u(intro)]%r%r
+    [repeat(%cr-%cn,78)]%r
+    [u(#54/block.bio,%#,getstat(%#/template))]%r
+    [repeat(%cr-%cn,78)]%r%r
+    For more information about any of the stats here, type '%chstat <stat>%cn'.%r%r
+    [u(bio.[getstat(%#/template)])]%r%r
+    [u(.footer)]%r
+
+-
+
+@va here=#14
+-
+#/
+------------------------------------------------------------------------------
+--- Intro Text ---------------------------------------------------------------
+/#
+
+&intro here= In this room we'll set the details of the 'bio' section of your character's sheet. Once these details are set, we'll move onto setting up your character's attributes.
+-
+
+
+#/
+------------------------------------------------------------------------------
+--- .footer ------------------------------------------------------------------
+/#
+
+&.footer here=
+    Type '%chNext%cn' to continue to [eval( default( me/next, the next step. ))]%r
+    Type '%chBack%cn' to return to [eval( default( me/previous, the previous step. ))] %r
+    Type '%chrestart%cn' to begin this step from the beginning again.%r
+    Type '%chabort%cn' to leave character generation.
+-
+
+#/
+------------------------------------------------------------------------------
+--- Bio Blocks ---------------------------------------------------------------
+
+Short lists on the commands needed to set bio entries of the character sheet.
+
+/#
+
+&bio.human here=
+    %chFull Name:%cn stat/set Full Name=<Name>%r
+    %chBirthdate:%cn stat/set Birthdate=<Month Day Year>%r
+    %chVirtue:%cn stat/set Virtue=<Virtue>%r
+    %chVice:%cn stat/set Vice=<Vice>%r
+    %chGender:%cn @sex me=<Male/Female/yes/no/whatever>
+-

@@ -1,0 +1,397 @@
+/*
+################################################################################
+### Global Function Object #####################################################
+
+https://github.com/lcanady/CrescentMoonMux
+
+Formatted for Muxify: http://muxify.musoapbox.net/editor.html
+
+This is the general globals object for Crescent Moon Mux. It holds helpful,
+random global user functions.
+
+--------------------------------------------------------------------------------
+--- @startup -------------------------------------------------------------------
+
+Startup script to add user functions to the @function list. This is taken from
+Thenomian (https://github.com/thenomain).
+
+*/
+
+@Startup #56=
+    @dolist lattr( %!/ufunc.* )=
+        @function/preserve [rest( ##, . )]=%!/##;
+    @dolist lattr( %!/ufunc/privileged.* )=
+        @function/preserve/privileged [rest( ##, . )]=%!/##
+
+
+/*
+--------------------------------------------------------------------------------
+--- f.convert.secs -------------------------------------------------------------
+
+Formats seconds into d, h, m, s format.  This code was originally part of the
+Global Sandbox Project function secs2hrs. I don't know the originial developer
+please forgive.
+
+0: Seconds idle
+
+*/
+
+&f.convert.secs #56=
+    [switch( 1,
+        lte( %0, 60 ), %0s,
+        lte( %0, 3600 ),[div( %0, 60 )]m,
+        lte( %0, 86400 ),
+            [div( 1%0, 3600 )]h%b
+            [rjust( div( mod( %0, 3600), 60), 2)]m,
+        [div( %0, 86400) ]d%b
+        [rjust( div( mod( %0, 86400), 3600), 2 )]h
+    )]
+
+
+/*
+--------------------------------------------------------------------------------
+--- idletime(<player>) ---------------------------------------------------------
+
+Formats a player's idle time into d, h, n, s format for the Global Room Parent.
+
+0: Player dbref
+
+*/
+
+&f.idletime #56= u( f.convert.secs, idle(%0) )
+
+
+/*
+--------------------------------------------------------------------------------
+--- shortdesc(<player>) --------------------------------------------------------
+
+Formats a player's &short-desc attribute for the Global Room Parent.
+
+0: Player dbref
+
+*/
+
+&f.shortdesc #56=
+    ljust(
+        udefault(
+            %0/short-desc,
+            ansi( hx, Type: &short-desc me=<text> )
+        ), 41
+    )
+-
+
+&ufunc/privileged.shortdesc #56=u( #56/f.shortdesc, %0)
+
+
+/*
+
+/*
+================================================================================
+== Vcolumns() attempt 2, the working one =======================================
+
+vcolumns( <list1> <width1>, ..., <delim>, <divider>, <left>, <right> )
+
+Due to limitations in Mu* code, the only way to separate <width> from <list> is with a pre-defined delimiter for this only. I'm sticking with :.
+
+Max columns is 9, 8 if delim, 7 if divider, 6 if left, 5 if right.
+
+--
+
+input:
+
+    0-9: input, hopefully at least one columns
+
+registers:
+    0-9: columns
+    d: delim
+    i: divider
+    l: left
+    r: right
+
+    c: number of columns
+    h: height
+
+--
+*/
+
+&format.vcolumns #56=
+
+// Num Columns
+    [iter(
+        lnum( 9 ),
+        if(
+            and( isint( before( v( %i0 ), : )), strmatch( v( %i0 ), *:* )),
+            setq( c, inc( %i0 ))
+         ), , @@
+     )]
+
+// Set Other Registers
+// ( we set an empty delim to %b because wrap's defaults to %r )
+    [setq( d, if( t( comp( v( %qc ), )), v( %qc ), %b ))]
+    [setq( v, v( inc( %qc )))]
+    [setq( l, v( add( %qc, 2 )))]
+    [setq( r, v( add( %qc, 3 )))]
+
+// Check each column's elements for wrap and enforce it ( <width>:<list> )
+    [iter(
+        lnum( %qc ),
+// .. set 0-9 with the column, internal elements wrapped
+        setq( %i0,
+            [setr( w, first( v( %i0 ), : ))]:
+            [iter(
+                rest( v( %i0 ), : ),
+                wrap( %i0, %qw, left, , , , %qd ),
+                %qd,
+                %qd
+             )]
+         ), , @@
+     )]
+// Get Height ( <width>:<list> )
+    [iter( lnum( %qc ), setq( h, max( %qh, words( rest( r( %i0 ), : ), %qd ))), , @@ )]
+
+// Display Lines
+    [iter(
+        lnum( 1, %qh ),
+// .. >> Display Columns on that line
+// .. .. Left
+        %ql
+// .. .. Center
+        [iter(
+            lnum( %qc ),
+            if(
+                t( setr( z, extract( rest( r( %i0 ), : ), inum( 1 ), 1, %qd ))),
+                %qz,
+                space( first( r( %i0 ), : ))
+            ), , %qv
+         )]
+// .. .. Right
+        %qr,
+        , %r
+     )]
+
+
+&format.vcolumns #56=[iter( lnum( 9 ), if( and( isint( before( v( %i0 ), : )), strmatch( v( %i0 ), *:* )), setq( c, inc( %i0 )) ), , @@ )][setq( d, if( t( comp( v( %qc ), )), v( %qc ), %b ))][setq( v, v( inc( %qc )))][setq( l, v( add( %qc, 2 )))][setq( r, v( add( %qc, 3 )))][iter( lnum( %qc ), setq( %i0, [setr( w, first( v( %i0 ), : ))]:[iter( rest( v( %i0 ), : ), wrap( %i0, %qw, left, , , , %qd ), %qd, %qd )] ), , @@ )][iter( lnum( %qc ), setq( h, max( %qh, words( rest( r( %i0 ), : ), %qd ))), , @@ )][iter( lnum( 1, %qh ), %ql[iter( lnum( %qc ), if( t( setr( z, extract( rest( r( %i0 ), : ), inum( 1 ), 1, %qd ))), %qz, space( first( r( %i0 ), : )) ), , %qv )]%qr, , %r )]
+
+&ufunc/privileged.vcolumns #56=u( #56/format.vcolumns, %0, %1, %2, %3, %4, %5, %6, %7, %8, %9 )
+
+/*
+--------------------------------------------------------------------------------
+--- header(<text>) -------------------------------------------------------------
+
+Outputs a pretty formatted header.
+
+0: Text
+
+*/
+
+&f.header #56=
+    center(
+        ansi( hr, <<, h, %b%0%b, hr, >>, n ),78,%cr-%cn
+    )
+
+&ufunc/privileged.header #56=u( #56/f.header, %0)
+
+/*
+--------------------------------------------------------------------------------
+--- lheader(<text>) ------------------------------------------------------------
+
+Outputs a pretty, left formatted header.
+
+0: Text
+
+*/
+
+&f.lheader #56 =
+    strcat(
+        ansi( r, ---, n ),
+        ljust(
+            ansi( hr, <<, h, %b%0%b, hr, >>, n ),
+            sub( 78, 3 ),
+            ansi(r, -, n )
+        )
+    )
+
+&ufunc/privileged.lheader #56= u( #56/f.lheader, %0 )
+
+
+
+/*
+--------------------------------------------------------------------------------
+--- divider(<text>) ------------------------------------------------------------
+
+Outputs a pretty formatted divider.
+
+0: Text
+
+*/
+
+&f.divider #56=
+    center( ansi( hr, <<, h, %b%0%b, hr, >>, n ), 78, ansi( r, -, n ))
+
+&ufunc/privileged.divider #56=u( #56/f.divider, %0 )
+
+
+
+/*
+--------------------------------------------------------------------------------
+--- footer(<text>) -------------------------------------------------------------
+
+Outputs a pretty formatted footer. Takes an optional variable to add a text
+portion to the output.
+
+0: Text
+
+*/
+
+&f.footer #56 =
+    strcat(
+        rjust(
+            if( %0, ansi( hr, <<, h, %b%0%b, hr, >>, n )),
+            sub( 78, 3 ),
+            ansi(r, -, n )
+        ),
+        ansi( r, ---, n )
+    )
+
+&ufunc/privileged.footer #56= u( #56/f.footer, %0 )
+
+
+/*
+--------------------------------------------------------------------------------
+--- capitalize(<text>) ---------------------------------------------------------
+
+Capitalizes a string of text.
+
+0: Text
+
+*/
+
+&format.capitalize #56=iter( %0, capstr( lcstr( ## )))
+
+&ufunc/privileged.capitalize #56=u( #56/format.capitalize, %0 )
+
+/*
+--------------------------------------------------------------------------------
+--- titlestr(<text>) -----------------------------------------------------------
+
+Formats a title string
+
+0: Text
+
+*/
+
+&format.titlestr #56=ansi( h, capitalize( edit( %0, _, %b )))
+
+&ufunc/privileged.titlestr #56=u( #56/format.titlestr, %0 )
+
+
+#/
+==============================================================================
+=== pages(<list>,<height>[,<page>][,<title>]) ================================
+
+Takes a list (or string, I haven't tested with one yet), and breaks it down
+pages, depending on the line height given to it.  Great for long scrolling
+lists that need to be broken up.
+
+    0: list to be broken down into pages
+    1: viewport height
+    2: page # to display
+
+    ql: # of lines
+    qf: # first display line
+    qe: # last display line
+    qh: adjusted line height
+    qp: # of pages
+
+    q0: Internal counter
+
+/#
+
+&f.pages #56=
+
+## -- Set register defaults
+    [setq(l,0)]
+
+## -- Count the number of lines '%r'
+    [setq(0,
+        [trim(iter(%0,setq(l,add(%ql,1)),%r))]
+    )]
+    [setq(p, ceil(fdiv( %ql, %1 )))]
+
+## -- Adjust the line height for the header and footer
+    [setq(h, sub( %1, 2 ))]
+
+## -- Determine where to start the display
+    [setq(f,
+        if(
+            or(
+                eq(%2,1),
+                strmatch(%2,)
+            ),
+            1,
+            if(
+                lte(
+                    add(mul( %qh, if( dec(%2), dec( %2 ), 1 )),1),
+                    %ql
+                ),
+                add(mul( %qh, if( dec(%2), dec( %2 ), 1 )),1),
+            )
+        )
+    )]
+
+## -- Calculate last line of the page.
+    [setq(e,
+        if(
+            eq( %2, %qp ),
+            %ql,
+            dec(add(%qf,%qh))
+        )
+    )]
+
+
+## -- if it's a valid page, display!
+[if(
+    and(
+        lte(%2,%qp),
+        isnum(%2)
+    ),
+    [if( %3,
+        [header(%3)],
+        [repeat(%cr-%cn,78)]
+    )]
+    [trim(
+        iter(
+            lnum(%qf,%qe),
+            %r[extract(%0,##,1,%r)]
+        )
+    )]%r
+    [footer( Page %2 of %qp )]
+)]
+
+-
+
+
+&ufunc.pages #56=ulocal(#56/f.pages, %0, %1, %2, %3)
+
+
+
+
+
+
+&.isstaff #56=or( orflags(%0,wWZ), strmatch( %0, #28 ))
+&.issecondary #56= hasattr(%0, secondary)
+&.istertiary #56= hasattr(%0, tertiary)
+&ufunc/privileged.crumple #56=u( #56/f.crumple, %0)
+&f.crumple #56=trim(squish(%0),b)
+
+/*
+--------------------------------------------------------------------------------
+--- User Functions -------------------------------------------------------------
+*/
+
+
+&ufunc/privileged.issecondary #56=u( #56/.issecondary, %0 )
+&ufunc/privileged.istertiary #56=u( #56/.istertiary, %0 )
+&ufunc/privileged.wfooter #56=u( #56/f.footer, %0 )
+&ufunc/privileged.wheader #56=u( #56/f.lheader, %0 )
+&ufunc.isstaff #56=u( #56/.isstaff, %0 )

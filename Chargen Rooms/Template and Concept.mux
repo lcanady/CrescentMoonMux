@@ -1,0 +1,80 @@
+#/
+##############################################################################
+### Character Generation Template & Concept Room  ############################
+
+https://github.com/lcanady/CrescentMoonMux
+
+This is the very first room of Crescent Moon Mux CG.
+
+Requires:
+    Global Room Parent <GRP>
+
+
+------------------------------------------------------------------------------
+--- @desc --------------------------------------------------------------------
+
+The room @desc is broken up into 4 parts; The intro, the 'stat block',
+directions and footer instrutctions.
+/#
+
+@desc here=
+    %r%t[u(intro)]%r%r[repeat(%cr-%cn,78)]%r[u( block.template ,%# )]%r
+    [repeat(%cr-%cn,78)]%r%rThe following are available for play right now: [itemize(iter(get(#14/bio.template),%ch[capitalize(##)]%cn,.,.),.)]%r%rType '%chstat/template <template>%cn' to set your character's template.%rType '%chstat/set concept=<concept>%cn' to set your character's concept.%r%r
+    [u( .footer)]%r
+-
+
+@va here=#14
+-
+
+@conformat here=%b
+-
+
+#/
+------------------------------------------------------------------------------
+--- Intro Text ---------------------------------------------------------------
+/#
+
+&intro here= The first steps in creating your character on Crescent Moon is choosing your template and set your concept:
+-
+
+
+#/
+------------------------------------------------------------------------------
+--- .footer ------------------------------------------------------------------
+/#
+
+&.footer here=
+    Type '%chNext%cn' to continue to [eval( default( me/next, the next step. ))]%r
+    Type '%chrestart%cn' to begin this step from the beginning again.%r
+    Type '%chabort%cn' to leave character generation.
+-
+
+
+#/
+------------------------------------------------------------------------------
+--- block.template -----------------------------------------------------------
+/#
+
+&block.template here=
+    strcat(
+        setq( o,
+            iter(
+                template concept,u
+                local( #48/f.cheat_getstat.with_name, %0, bio.%i0, string ),,|
+            )
+        ),
+        setq( w, 75 ),
+        setq( t, 73 ),
+        setq( b,
+            iter(
+                %qo,
+                ulocal( #48/display.trait-and-value, %i0, %qt, %qw, string, . ), |, |
+            )
+        ),
+        vcolumns(
+            %qw:%qb,
+            |,
+            %b,
+            %b%b
+        )
+    )

@@ -5,18 +5,17 @@
 https://github.com/lcanady/CrescentMoonMux
 
 Formatted for Muxify: http://muxify.musoapbox.net/editor.html
-Shoutout to https://github.com/thenomain for his formatting.
 
 Usage
-    @parent <target room dbref>=<parent room dbref> 
+    @parent <target room dbref>=<parent room dbref>
 
 And in your .config file add the following line to automatically assign your
 room parent to any new rooms created:
-    
+
     room_parent <parent room dbref>
 
 This is the parent room for Crescent Moon Mux. It's set through the .config file
-as parent_room and should be automatically set when new rooms are created. 
+as parent_room and should be automatically set when new rooms are created.
 
 Requirements:
     header(<text>):         Game's pretty header function.
@@ -31,8 +30,7 @@ Requirements:
 
 @dig Global Room Parent <GRP>
 @fo me=&d.grp=[search( name=Global Room Parent <GRP> )]
-@fo me= &d.fgo [v( d.grp )]=[search( name=Global Function Object )]
-@set [v( d.grp )]=safe floating halt 
+@set [v( d.grp )]=safe floating halt
 
 /*
 --------------------------------------------------------------------------------
@@ -48,13 +46,13 @@ These are the settings to change the basic apperance of your Global Room Parent
 &config.hcolor    [v( d.grp )]= hr
 &config.text      [v( d.grp )]= h
 &config.filler    [v( d.grp )]= -
-&config.lsep      [v( d.grp )]= <<  
-&config.rsep      [v( d.grp )]= >>   
+&config.lsep      [v( d.grp )]= <<
+&config.rsep      [v( d.grp )]= >>
 
 // Color configuration for exits with &secondary or &tertiary attributes
-    
+
 &config.secondary [v( d.grp )] = c
-&config.tertiary  [v( d.grp )] = m 
+&config.tertiary  [v( d.grp )] = m
 
 /*
 --------------------------------------------------------------------------------
@@ -66,12 +64,12 @@ the owner of the room can see the dbref and flags list.
 */
 
 @NameFormat [v( d.grp )]=
-    header( 
+    header(
             [name( %! )]
             [if(
                 or( match( %#, owner( %! ) ), orflags( %#, wWZ )),
                 %([num( me )][flags( %! )]%)
-            )] 
+            )]
      )
 
 
@@ -83,26 +81,31 @@ Room contents are split up into two parts, players and things.
 
 */
 
-@ConFormat [v( d.grp )]=     
-    [u( .header, Characters )]
-    [iter(  
-        filter( filter.players, cat( %#, %0 )),
-        %r[u( format.character, ## )]
+@ConFormat [v( d.grp )]=
+   [if(
+        [or(
+            not( hasattr( %!, blind ) ),
+            isstaff(%#)
+        )],
+        [u( .header, Characters [if( hasattr( %!, blind ), %[%ch%cxBLIND%cn%] )] )]
+        [iter(
+            filter( filter.players, lcon( %! )),
+            %r[u( format.character, ## )]
+        )]
+        [if(
+            words( filter( filter.objects, %0) ),
+            strcat(
+                %r,u( .header, Objects ),
+                iter( filter( filter.objects, %0 ), %r[name( ## )])
+            )
+        )],%b
     )]
-    [if( 
-        words( filter( filter.objects, %0) ),
-        strcat(
-            %r,u( .header, Objects ),
-            iter( filter( filter.objects, %0 ), %r[name( ## )])
-        )
-    )]
-
 
 /*
 --------------------------------------------------------------------------------
 --- Exit Format ----------------------------------------------------------------
 
-Formats the room's exit list. 
+Formats the room's exit list.
 
 Basic exit format. Don't worry about color, it's applied automatically:
     Exit Name <EN>;exit;en
@@ -113,36 +116,52 @@ Exits can have two optional attributes:
 
 */
 
-@exitformat #16= iter(%0, get(##/secondary))
+@ExitFormat [v( d.grp )]=
 
+    [if(
+        [or(
+            not( hasattr( %!, blind ) ),
+            isstaff(%#)
+        )],
+        [if(
+            %0,
+            [u( .header, Exits )]%r
+        )]
+        [columns(
+            iter( %0,
+                switch( 1,
 
-@ExitFormat [v( d.grp )]= 
-    [u( .header, Exits )]%r
-    [columns(
-        iter( %0, 
-            switch( 1,                  
-                issecondary( ## ), 
-                    edit( 
-                        name( ## ), 
-                        <, ansi( v( config.secondary ), < ), 
-                        >, ansi( v( config.secondary ), > )
-                    ),
-                istertiary( ## ),
-                    edit( 
-                        name( ## ), 
-                        <, ansi( v( config.tertiary ), < ), 
-                        >, ansi( v( config.tertiary ), > ) 
-                    ),
-                edit(
-                    name( ## ),
-                    <, ansi( v( config.hcolor ), < ),
-                    >, ansi( v( config.hcolor ), > )
-                )
-            ),,|
-        )
-        ,26,|
+## Find exits with the &secondary attribute
+
+                    issecondary( ## ),
+                        edit(
+                            name( ## ),
+                            <, ansi( v( config.secondary ), < ),
+                            >, ansi( v( config.secondary ), > )
+                        ),
+
+## Find exits with the &tertiary attribute
+
+                    istertiary( ## ),
+                        edit(
+                            name( ## ),
+                            <, ansi( v( config.tertiary ), < ),
+                            >, ansi( v( config.tertiary ), > )
+                        ),
+                    edit(
+                        name( ## ),
+                        <, ansi( v( config.hcolor ), < ),
+                        >, ansi( v( config.hcolor ), > )
+                    )
+                ),,|
+            )
+            ,26,|
+        )]
     )]
     [if(
+
+## IC Area?
+
         not( hasflag( %!, IC )),
         footer( OOC AREA ),
         footer()
@@ -164,7 +183,8 @@ filter( filter.players, %0 )
 &filter.players [v( d.grp )]=
     and(
         hastype( %0, player ),
-        not( hasflag( %0, dark ))
+        not( hasflag( %0, dark )),
+        hasflag(%0, connected )
     )
 
 
@@ -181,8 +201,10 @@ filter( filter.objects, %0 )
 */
 
 &filter.objects [v( d.grp )]=
-    hastype( %0, thing )
-
+    and(
+        hastype( %0, thing ),
+        not( hasflag( %0, dark ))
+    )
 
 /*
 --------------------------------------------------------------------------------
@@ -193,22 +215,22 @@ Shows a formatted header for @conformat and @exitformat
 0: Title
 
 */
-    
+
 
 &.header [v( d.grp )]=
     strcat(
-        ansi( 
-            v( config.color ), 
-            [repeat( v( config.filler ), 3 )], 
-            n 
+        ansi(
+            v( config.color ),
+            [repeat( v( config.filler ), 3 )],
+            n
         ),
-        ljust( 
-            ansi( 
-                v( config.hcolor ), v( config.lsep ), 
-                v( config.text ), %b%0%b, 
-                v( config.hcolor), v( config.rsep ), n 
-            ), 
-            sub(78,3), 
+        ljust(
+            ansi(
+                v( config.hcolor ), v( config.lsep ),
+                v( config.text ), %b%0%b,
+                v( config.hcolor), v( config.rsep ), n
+            ),
+            sub(78,3),
             ansi( v( config.color ), v( config.filler ), n )
         )
     )
@@ -218,16 +240,16 @@ Shows a formatted header for @conformat and @exitformat
 --------------------------------------------------------------------------------
 --- Format Moniker -------------------------------------------------------------
 
-Checks to see if a player has a moniker.  If looker is wizard or staff, it will 
+Checks to see if a player has a moniker.  If looker is wizard or staff, it will
 also show the dbref of a player.
 
 0: target
-1: looker 
+1: looker
 
 */
 
 &format.moniker [v( d.grp )]=
-        [moniker(%0)][if(orflags(%1,wW),%(%0%))]
+        [moniker( %0 )][if( orflags( %#, wWZ ), %(%0%) )]
 
 
 /*
@@ -237,7 +259,7 @@ also show the dbref of a player.
 Formats character information for display to the room.
 
 0: target
-1: looker 
+1: looker
 
 */
 

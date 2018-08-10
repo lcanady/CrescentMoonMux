@@ -1,0 +1,236 @@
+#/
+##############################################################################
+### Character Generation Attributes Room  ####################################
+
+https://github.com/lcanady/CrescentMoonMux
+
+This is the attribute setting chargen room for Crescent Moon Mux
+
+Requires:
+    Global Room Parent <GRP>
+
+
+------------------------------------------------------------------------------
+--- @desc --------------------------------------------------------------------
+
+The room @desc is broken up into 4 parts; The intro, the 'stat block',
+directions and footer instrutctions.
+/#
+
+@desc here=
+    %r%t[u(intro)]%r%r[u( #54/block.attributes, %#, getstat( %#/template ))]%r%r%b%b
+    [ljust(%ch%cuPoints:%cn %ch[default(%#/_mental,0)]%cn,24)]%b
+    [ljust(%ch%cuPoints:%cn %ch[default(%#/_physical,0)]%cn,24)]%b
+    [ljust(%ch%cuPoints:%cn %ch[default(%#/_social,0)]%cn,24)]%r
+    [repeat(%cr-%cn,78)]
+    %r%rType '%chChoose <pms>,<mps>,<etc>%cn' to set your attribute priorities.%cn%r
+    Type '%chset <attribute> to <level>%cn' to assign attribute points.%r%r
+    [u( .footer)]%r
+-
+
+@va here=#14
+-
+#/
+------------------------------------------------------------------------------
+--- Intro Text ---------------------------------------------------------------
+/#
+
+&intro here= In this room we're going to set your character's attributes. There are three categories of attributes, %chP%cnhysical, %chM%cnental and %chS%cnocial. First you're going to need to set your attribute priorities %(primary, secondary and tertiary%).
+-
+
+
+#/
+------------------------------------------------------------------------------
+--- .footer ------------------------------------------------------------------
+/#
+
+&.footer here=
+    Type '%chNext%cn' to continue to [eval( default( me/next, the next step. ))]%r
+    Type '%chBack%cn' to return to [eval( default( me/previous, the previous step. ))] %r
+    Type '%chrestart%cn' to begin this step from the beginning again.%r
+    Type '%chabort%cn' to leave character generation.
+-
+
+
+#/
+==============================================================================
+=== Command: Set =============================================================
+
+Syntax:
+    set <attribute> to <number>
+
+Sets an attribute to a number between 1 and 5 depending on the available
+points of the character.  Basically a wrapper for Thenomian'a GMCCG library.
+
+1: Stat name
+2: Stat value
+
+q0: difference from old value to new.
+q1: trim and tidy version of %1.
+q2: Attribute category (physcial|mental|social)
+
+/#
+
+&c.set here=$^\+?set(.+)to(.+)$:
+
+## Have they started chosen their attribute priorities yet?
+
+    @assert [hasattr( %#, _mental )] =
+        @pemit %# =
+            [u( .msg,
+                Chargen/Attributes,
+                Please '%chchoose%cn' your attribute priorities first.
+            )];
+
+    [setq( 0,
+        sub(
+            getstat( %#/[trim( %1, b )]),
+            %2
+        )
+    )];
+    [setq(1, trim( %1,b ))]
+    [setq( 2,
+        if(
+            match( statpath( %#/[trim(%1,b)] ), ATTRIBUTE, . ),
+            switch(1,
+                hastag?( %q1, physical ),
+                physical,
+                hastag?( %q1, mental ),
+                mental,
+                hastag?( %q1, social ),
+                social
+            )
+        )
+    )];
+
+## Does the entry pass a few validation tests?
+
+    @switch [t( words( %q2 ))]
+            [and( gte( %2, 1 ),lte( %2, 5 ))]
+            [gte( add( get( %#/_%q2 ), %q0 ), 0 )] =
+        0??, { @pemit %#= [u( .msg, Attributes/Set, That's not a valid attribute. )]},
+        10?, { @pemit %#= [u( .msg, Attributes/Set, That's not a valid value. )]},
+        110, { @pemit %#= [u( .msg, Attributes/Set, You don't have enough %ch%q2%cn points left. )]},
+        111, { &_%q2 %#=[add(get(%#/_%q2),%q0)];
+                @fo %#=stat/set %1=%2;
+                @wait .1=@pemit %#= You have %ch[get(%#/_%q2)]%cn %ch%q2%cn points left.
+        };
+
+-
+
+@set here/c.set=regex
+-
+
+
+#/
+==============================================================================
+=== Command: Restart =========================================================
+
+Syntax:
+    restart
+
+Sets all of the character's attributes back to default values/
+
+/#
+
+&c.restart here=$^\+?restart$:
+
+    @assert [hasattr( %#, _mental )]=
+        @pemit %#= [u( .msg, Attributes/Restart, You don't have anything to reset.)];
+
+    @dolist [lattr( %va/ATTRIBUTE.*)] = { &_## %#=[get( %va/DEFAULT.## )] };
+    @pemit %#=[u( .msg, Attribute/Resrart, Attributes have been reset.)];
+    &_physical %#=;
+    &_mental %#=;
+    &_social %#=;
+-
+
+@set here/c.restart=regex
+-
+
+
+#/
+==============================================================================
+=== Command: Restart =========================================================
+
+Syntax:
+    choose <three letter code>
+
+Allows the player to choose the priorities of their attributes between
+Primary, Secondary and tertiary.
+
+/#
+
+
+&c.choose here=$^\+?choose(.*):
+    @switch [lcstr(trim(%1,b))]=
+    pms,{   &_physical %#=5;
+            &_mental %#=4;
+            &_social %#=3;
+            @pemit %#=
+                [u( .msg, Choose,
+                    Your priorities have been set to Physical\, Mental\, Social.
+                )]%r
+                [u( .msg, Choose,
+                    Type '%chlook%cn' to see your attribute points remaining.
+                )]
+        },
+    mps,{   &_physical %#=4;
+            &_mental %#=5;
+            &_social %#=3;
+            @pemit %#=
+                [u( .msg, Choose,
+                    Your priorities have been set to Mental\, Physical\, Social.
+                )]%r
+                [u( .msg, Choose,
+                    Type '%chlook%cn' to see your attribute points remaining.
+                )]
+        },
+    spm,{   &_physical %#=4;
+            &_mental %#=3;
+            &_social %#=5;
+            @pemit %#=
+                [u( .msg, Choose,
+                    Your priorities have been set to Social\, Physical\, Mental.
+                )]%r
+                [u( .msg, Choose,
+                    Type '%chlook%cn' to see your attribute points remaining.
+                )]
+        },
+    psm,{   &_physical %#=5;
+            &_mental %#=3;
+            &_social %#=4;
+            @pemit %#=
+                [u( .msg, Choose,
+                    Your priorities have been set to Physical\, Social\, Mental.
+                )]%r
+                [u( .msg, Choose,
+                    Type '%chlook%cn' to see your attribute points remaining.
+                )]
+        },
+    msp,{   &_physical %#=3;
+            &_mental %#=5;
+            &_social %#=4;
+            @pemit %#=
+                [u( .msg, Choose,
+                    Your priorities have been set to Mental\, Social\, Physical.
+                )]%r
+                [u( .msg, Choose,
+                    Type '%chlook%cn' to see your attribute points remaining.
+                )]
+        },
+    smp,{   &_physical %#=3;
+            &_mental %#=4;
+            &_social %#=5;
+            @pemit %#=
+                [u( .msg, Choose,
+                    Your priorities have been set to Social\, Mental\, Physical.
+                )]%r
+                [u( .msg, Choose,
+                    Type '%chlook%cn' to see your attribute points remaining.
+                )]
+        },
+        { @pemit %#=[u( .msg, Attributes/Choose, I don't recognize that combination. )] }
+-
+@set here/c.choose = regex
+
