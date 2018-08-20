@@ -303,7 +303,7 @@ lists that need to be broken up.
     qh: adjusted line height
     qp: # of pages
 
-    q0: Internal counter
+    q0: container register
 
 /#
 
@@ -313,9 +313,7 @@ lists that need to be broken up.
     [setq(l,0)]
 
 ## -- Count the number of lines '%r'
-    [setq(0,
-        [trim(iter(%0,setq(l,add(%ql,1)),%r))]
-    )]
+    [setq(0, iter(%0,setq( l, inc( %ql )), %r ))]
     [setq(p, ceil(fdiv( %ql, %1 )))]
 
 ## -- Adjust the line height for the header and footer
@@ -373,7 +371,13 @@ lists that need to be broken up.
 
 &ufunc.pages #56=ulocal(#56/f.pages, %0, %1, %2, %3)
 
+-
 
+&.pages #56=
+    [setq(0,0)]
+    [setq(1,0)]
+    [trim( iter( %0, setq( 0, inc( %q0 )), %r ))]
+    [setq(1, ceil(fdiv( %q0, sub( %1, 2 ))))]%q1
 
 
 

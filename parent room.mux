@@ -21,8 +21,6 @@ Requirements:
     header(<text>):         Game's pretty header function.
     idletime(<player>):     Checks a player's idle time.
     shortdesc(<player>):    Display a player's &short-desc attribute
-    issecondary(<exit>):    Checks for a secondary exit attribute
-    istertiary(<exit>):     Checks for tertiary exit attritbute
 
 --------------------------------------------------------------------------------
 --- Setup ----------------------------------------------------------------------

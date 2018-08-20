@@ -1,0 +1,12 @@
+@@
+@@ Weather.min.mux
+@@ https://github.com/lcanady/CrescentMoonMux
+@@
+
+@create Weather System <WS>
+@set  Weather System <WS>=inherit safe
+@fo me=&d.ws me=search( name=Weather System <WS> )
+&c.weather [v( d.ws )]=$^\+?weather$:@pemit %#=[lheader(Current Weather Conditions)]%r[ljust(%b%b%chCurrent Conditions:%cn,38)][u( f.get-field, conditions, conditions )]%r[ljust(%b%b%chTemperature:%cn,38)][u( f.get-field, conditions, temperature )]%r[ljust(%b%b%chWind:%cn,38)][u( f.get-field, conditions, wind )]%r[ljust(%b%b%chAtmospheric Pressure:%cn,38)][u( f.get-field, conditions, pressure )]%r[ljust(%b%b%chVisibility:%cn,38)][u( f.get-field, conditions, visibility )]%r[ljust(%b%b%chHumidity:%cn,38)][u( f.get-field, conditions, humidity )]%r[ljust(%b%b%chSunrise:%cn,38)][timefmt($H:$M ,u( f.get-field, conditions, sunrise ))]%r[ljust(%b%b%chSunset:%cn,38)][timefmt($H:$M ,u( f.get-field, conditions, sunset ))]%r[ljust(%b%b%chMoon Phase:%cn,38)][u( f.get-field, conditions, moon_phase )][if(u( f.is-moon-visible? ),%b<%chVisibile%cn>,%b<Not Visible>)]%r[footer(CURRENT TIME: [time()])]
+&f.get-field [v( d.ws )]=strcat(null( regmatchi( textfile( meteo, %0 ), %1: .+, 0 )),trim( rest( %q0, : )))
+&.between [v( d.ws )]=cand(gte( %2, min( %0, %1 )),lte( %2, max( %0, %1 )))
+&f.is-moon-visible? [v( d.ws )]=u( .between,secs(),u( f.get-field, conditions, moonrise ),u( f.get-field, conditions, moonset ))

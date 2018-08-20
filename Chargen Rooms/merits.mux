@@ -96,6 +96,8 @@ is entered.
 ==============================================================================
 === Command: Set =============================================================
 
+Main command for setting merits on a character object.  It's basically a
+wrapper for stat with some point checking capabilities.
 
 
     0: whole command string
@@ -259,6 +261,17 @@ Maximum page count.
 
 &.pages here=   [setq(y,0)]
                 [trim(iter(%0,setq(y,add(%qy,1)),%r))]
-                [setq(z, ceil(fdiv( %qy, %1 )))]%qz
+                [setq(z,
+                    ceil(
+                        fdiv(
+                            %qy,
+                            sub(
+                                u(.height),
+                                2
+                            )
+
+                        )
+                    )
+                )]%qz
 -
 

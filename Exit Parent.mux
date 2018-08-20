@@ -1,0 +1,39 @@
+#/
+##############################################################################
+### Exit @Parent #############################################################
+
+https://github.com/lcanady/CrescentMoonMux
+
+This is the global exit parent for Crescent Moon Mux.  Success messages
+change depending on the type of location a character is moving too from.
+
+/#
+
+@odrop #236=arrives from [trim(first(name(home(%!)),-))].
+-
+@osucc #236=travels to [trim( first( name( loc(%!)),-))].
+-
+&directions #236 = n:north ne:northeast nw:northwest s:south se:southeast sw:southweat e:east w:west
+-
+@drop #236=
+    strcat(
+        null(regmatch( name( %! ), <(.*)>, 0 1)),
+        case(1,
+            t( grab( v( directions ), [lcstr(%q1)]:*) ),
+            strcat(
+                You move,%b,
+                rest( grab( v( directions ), [lcstr(%q1)]:* ), : )%,%b,
+                towards,%b,trim( first( name( loc( %! ) ), - ) ).
+            ),
+            cat(
+                You enter,
+                trim( first( name( loc(%! ) ), - ) ).
+            )
+        )
+
+    )
+-
+
+
+
+@nameformat #236=++ [name(%!)] ++

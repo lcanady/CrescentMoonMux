@@ -1,0 +1,268 @@
+#/
+##############################################################################
+### Character Generation Template Room #######################################
+
+https://github.com/lcanady/CrescentMoonMux
+
+This is the room used to set superatural templates on Crescent Moon Mux
+
+Requires:
+    Global Room Parent <GRP>
+
+
+------------------------------------------------------------------------------
+--- @desc --------------------------------------------------------------------
+
+The room @desc is broken up into 4 parts; The intro, the 'stat block',
+directions and footer instrutctions.
+/#
+
+@desc here=
+    %r%t[u(intro)]%r%r[u( #54/block.powers.[getstat(%#/template)], %#, getstat(%#/template) )]%r
+    [repeat(%cr-%cn,78)]%r[u( #54/block.traits.[getstat(%#/template)] )]%r%r
+    [u( desc.[ getstat(%#/template )] )]
+    %r%r
+    [u( .footer )]%r
+-
+
+@va here=#14
+-
+#/
+------------------------------------------------------------------------------
+--- Intro Text ---------------------------------------------------------------
+/#
+
+&intro here= In this room we're going to set your character's template if it needs to be set. Follow the directions listed in the description.
+-
+
+
+#/
+------------------------------------------------------------------------------
+--- .footer ------------------------------------------------------------------
+/#
+
+&.footer here=
+    Type '%chNext%cn' to continue to [eval( default( me/next, the next step. ))]%r
+    Type '%chBack%cn' to return to [eval( default( me/previous, the previous step. ))] %r
+    Type '%chrestart%cn' to begin this step from the beginning again.%r
+    Type '%chabort%cn' to leave character generation.
+-
+
+
+#/
+=============================================================================
+=== Command: attribute (Vampire) ============================================
+
+The command for vampires to set their favored attriute based on clan selection.
+
+/#
+
+&c.favored-attribute here=$^\+?at[tribute]+\s(.*)$:
+
+    @Switch [match( getstat( %#/template ), Vampire )]
+            [not(hasattr(%#,_attr))]
+            [hasattr( %#, _bio.clan )]
+            [match( ATTRIBUTE , before( statpath( stripansi(statname( %1 ))), . ))]
+            [hastag?( stripansi( statname( %1 )), getstat( %#/clan ))]=
+    0????,{ @pemit %#=[u( .msg, Attribute, Permission denied. )] },
+    10???,{ @pemit %#=[u( .msg, Attribute, You've Already Chosen your attribute.)]%r
+                [u( .msg, Attribute, Type '%chattribute/clear%cn to clear it.')]
+
+    },
+    110??,{ @pemit %#= [u( .msg, Attribute, You must set your clan first. )] },
+    1110?,{ @pemit %#= [u( .msg, Attribute, That's not a valid attribute. )] },
+    11110,{ @pemit %#= [u( .msg, Attribute, That's not a valid attribute for your clan. )]},
+    11111,{ @fo %#= { stat/set %1 +1;
+                       stat/set [stripansi( statname( %1 ))].favored = 1 };
+             &_attr %#=[stripansi( statname( %1 ))];
+             @wait .1 = @pemit %#=
+                [u( .msg, Attribute, Favored attribute '[statname( %1 )]' set. )];
+
+    }
+-
+
+@set here/c.favored-attribute=regex
+-
+##---------------------------------------------------------------------------
+
+&c.favored-attribute/clear here=$^\+?at[tribute]+/clear$:
+
+    @switch [match( getstat(%#/template), Vampire )]
+            [hasattr(%#,_attr)]=
+    0?, {   @pemit %#=Permission denied. },
+    10, {   @pemit %#= [u( .msg, Attribute, You don't have a favored attribute set. )]},
+    11, {   @fo %#={stat/set [get(%#/_attr)] -1;
+                    stat/set [get(%#/_attr)].favored =;   };
+                    @wait .1=@pemit %#= [u( .msg, Attribute, Favored attribute cleared. )];
+                    &_attr %#=;
+        }
+-
+@set here/c.favored-attribute/clear = regex
+
+-
+
+#/
+=============================================================================
+=== Command: Disciplines (vampire) ==========================================
+
+Chargen Discipline management system
+
+  disciplines                     - list disciplines
+  disciplines/buy  <discipline>   - buy disciplines
+  disciplines/sell <discipline>   - sell disciplines
+
+/#
+
+&c.disciplines here=$^\+?disciplines(.*)?$:
+
+## Make sure the player is either a vampire or a ghoul first.
+
+    @assert [or(
+                match(getstat(%#/template), Vampire),
+                match(getstat(%#/template), ghoul)
+            )]=@pemit %#=Permission denied.;
+
+## Find the command entry point
+
+    @pemit %#=
+        [setq( 0, %1 )]
+        [switch( strtrunc( %q0, 1 ),
+            @@(null), u( f.disc.list, %#),
+            /,  u( f.disc.switch %#, lcstr( after( %0, / ))),
+            %b, u(f.disc.specific %#, %0 ),
+            u( .msg, Disciplines, Unrecognized option.)
+    )]
+
+-
+@set here/c.disciplines =regex
+-
+
+#/
+-----------------------------------------------------------------------------
+--- f.disc.list -------------------------------------------------------------
+
+List all of the disciplines the character is eligable for.
+
+/#
+
+
+&f.disc.list here=
+    [header(Disciplines)]%r
+    [setq( 1, iter(lattr(%va/discipline*), after( ##, . )))]
+    [setq( 2, filter( filter.disciplines ,%q1,,,%0 ))]
+    [wrap(table(
+        [iter(
+            %q2,
+            [if(
+                hastag?(edit(##,_,%b), getstat(%0/clan)),
+                %ch%cu[capitalize(edit(##,_,%b))]%cn,
+                [capitalize(edit(##,_,%b))]
+            )],,|
+        )],24,76,|
+    ),76,l,%b%b)]%r
+    [footer()]%r
+    Type '%chstat <stat>%cn' for more info.%r
+    You have %ch[get(%0/_dpoints)]%cn discipline points left.
+-
+
+#/
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+/#
+
+&filter.disciplines here = udefault(%va/prerequisite.discipline.%0,1,%1 )
+
+-
+
+#/
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+/#
+
+
+&f.disc.switch here=
+    switch(1,
+        strmatch( %1, sell ),
+        u( f.disc.sell, %0, %1 ),
+        strmatch( %1, buy ),
+        u( f.disc.buy, %0, %1 )
+    )
+-
+
+#/
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+/#
+
+&f.disc.buy here=
+    switch(
+        [match( before( statpath( %1 ), . ), DISCIPLINE )]
+        [gte( dec( get( %0/_dpoints )), 0)]
+        [if(
+            not( hastag?( stripansi( statname( %1 )), getstat( %0/clan ))),
+            not( hasattr( %0, _disc )),
+            1
+        )],
+    0??,     u( .msg, Disciplines, That's not a valid discipline ),
+    10?,     u( .msg, Disciplines, You don't have enough points left. ),
+    110,     u( .msg, Disciplines, You have already selected an out of clan discipline. ),
+    111,
+            [shiftstat(%0/%1,1)]
+            [set( %0,_dpoints: [dec(get(%0/_dpoints))] )]
+            [pemit(
+                *%0,
+                u( .msg, Disciplines, Discipline point spent. You have
+                    %ch[get(%0/_dpoints)]%cn points left.
+                )
+            )]
+            [if(
+                not( hastag?( stripansi( statname( %1 )), get( %0/clan ))),
+                set(%0,_disc: 1)
+            )]
+
+    )
+-
+
+#/
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+/#
+
+&f.disc.sell here=
+    switch(
+        [match( before( statpath( %1 ), . ), DISCIPLINE )]
+        [gt( getstat( %0/%1 ), 0 )],
+    0?,     u( .msg, Disciplines, That's not a valid discipline. ),
+    10,     u( .msg, Disciplines, You don't have that discipline. ),
+    11,     [if(
+                lte( dec( getstat( %0/%1 )), 0),
+                [set(%0,_discipline.[stripansi( statname( %1 ))]: )]
+                [pemit(
+                    %0,
+                    Unset [statname(%1)].
+                )],
+                shiftstat( %0/%1, -1 )
+            )]
+            [set( %0,_dpoints: [inc(get(%0/_dpoints))] )]
+            [if(
+                 hastag?( stripansi( statname( %1 )), get( %0/clan )),
+                 set(%0,_disc: )
+            )]
+            [pemit(
+                *%0,
+                u( .msg, Disciplines, Discipline point returned. You have
+                    %ch[get(%0/_dpoints)]%cn points left.
+                )
+            )]
+
+    )
+
+
+
+
+#/
+------------------------------------------------------------------------------
+--- .msg ---------------------------------------------------------------------
+/#
+
+&.msg here= ansi( h, <%0>, n, %b%1 )

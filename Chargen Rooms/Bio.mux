@@ -65,6 +65,30 @@ Short lists on the commands needed to set bio entries of the character sheet.
     %chFull Name:%cn stat/set Full Name=<Name>%r
     %chBirthdate:%cn stat/set Birthdate=<Month Day Year>%r
     %chVirtue:%cn stat/set Virtue=<Virtue>%r
-    %chVice:%cn stat/set Vice=<Vice>%r
-    %chGender:%cn @sex me=<Male/Female/yes/no/whatever>
+    %chVice:%cn stat/set Vice=<Vice>%r%r
+    %chGender:%cn @sex me=<Male/Female/yes/no/whatever>%r
 -
+
+&bio.vampire here=
+    %chClan:%cn stat/set Clan=<Clan>%r
+    %chCovenant:%cn stat/set Covenant=<Covenant>%r
+    %chMask:%cn stat/set Mask=<Mask>%r
+    %chDirge:%cn stat/set Dirge=<Dirge>%r
+    %chEmbrace Date:%cn stat/set Embrace=<Month Day Year>%r
+    %chMystery (OD Only):%cn stat/set Mystery=<Mystery>%r
+
+-
+
+&bio.ghoul here=
+    %chFull Name:%cn stat/set Full Name=<Name>%r
+    %chBirthdate:%cn stat/set Birthdate=<Month Day Year>%r
+    %chClan%cn: stat/set Clan=<Clan>%r
+    %chRegnant%cn: stat/set Regnant=<Regnant>%r
+    %chVirtue:%cn stat/set Virtue=<Virtue>%r
+    %chVice:%cn stat/set Vice=<Vice>%r%r
+    %chGender:%cn @sex me=<Male/Female/yes/no/whatever>%r
+-
+
+
+
+birthdate concept clan coterie Regnant template virtue vice
