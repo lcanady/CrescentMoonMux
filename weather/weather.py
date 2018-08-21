@@ -16,11 +16,12 @@ import requests
 import datetime
 import time
 import sys
+import os
 import argparse
 
 
 class Struct(object):
-    """object for structuring json queries into objects"""
+    """For structuring json queries into objects"""
 
     def __init__(self, data):
         for name, value in data.items():
@@ -51,6 +52,24 @@ class Conditions(object):
         self.moonrise = ""
         self.moonset = ""
         self.moon_phase = ""
+
+
+class ColorDatabase(object):
+    """ Small color database """
+
+    def __init__(self):
+        self.color = {"black": "\u001b[30m",
+                      "red": "\u001b[31m",
+                      "green": "\u001b[32m",
+                      "yellow": "\u001b[33m",
+                      "blue": "\u001b[34m",
+                      "magenta": "\u001b[35m",
+                      "cycan": "\u001b[36m",
+                      "white": "\u001b[37m",
+                      "normal": "\u001b[0m",
+                      "bold": "\u001b[1m",
+                      "underline": "\u001b[4m",
+                      "reversed": "\u001b[7m"}
 
 
 def cels(temp):
@@ -101,67 +120,72 @@ def epoch(string, timezone):
     return epoch
 
 
-def yahoo_connect(location):
-    """ Get Current Weather information from Yahoo Weather """
-
-    # Yahoo weather URL string.
-    url = 'https://query.yahooapis.com/v1/public/yql?q=select * from\
-    weather.forecast where woeid in (select woeid from geo.places(1) \
-    where text="{}")&format=json'.format(location)
-
-    # Try to connect to yahoo.  Exit code 1 if connection can't be made.
-    try:
-        res = requests.get(url)
-    except requests.exceptions.RequestException as e:
-        print(e)
-        sys.exit(1)
+def connect(location, url, name):
+    """ Connect to API Sources """
 
     if args.verbose:
-        print("Mux Weather: Connected to Yahoo Weather")
-
-    return res.json()
-
-
-def google_geocode(location):
-    """ Get geocode information for the given location to make sure
-    it's an actual location."""
-
-    # Yahoo weather URL string.
-    url = 'https://maps.googleapis.com/maps/api/geocode/json?address={}'.format(location)
-
-    # Try to connect to google.  Exit code 1 if connection can't be made.
-    try:
-        res = requests.get(url)
-    except requests.exceptions.RequestException as e:
-        print(e)
-        sys.exit(1)
-
-    if args.verbose:
-        print("Mux Weather: Connected to Google Geoencoding")
-
-    return res.json()
-
-
-def usno_connect(location):
-    """ Get sun and moon data from the USNO database """
-
-    # get today's date
-    today = datetime.datetime.today().strftime('%m/%d/%Y')
-
-    # USNO (Sun moon Database) URL strung.
-    url = 'http://api.usno.navy.mil/rstt/oneday?date={}&loc={}'.format(today, location)
+        msg("Attempting connection to host: " + color(name, "bold"))
 
     # Try to connect.  Exit with code 1 if can't.
     try:
         res = requests.get(url)
     except requests.exceptions.RequestException as e:
-        print(e)
-        sys.exit(1)
+        msg(e, error=True)
 
     if args.verbose:
-        print("Mux Weather: Connected to USNO database")
+        msg("Connected to API: " + color(name, "bold"))
 
     return res.json()
+
+
+def supports_color():
+    """
+    Returns True if the running system's terminal supports color, and False
+    otherwise.
+    """
+    plat = sys.platform
+    supported_platform = plat != 'Pocket PC' and (plat != 'win32' or
+                                                  'ANSICON' in os.environ)
+    # isatty is not always implemented, #6223.
+    is_a_tty = hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
+    if not supported_platform or not is_a_tty:
+        return False
+    return True
+
+
+def color(message, color):
+    library = ColorDatabase()
+
+    # Does the terminal allow for ansi color codes?
+    if supports_color():
+
+        # Is the color defined?
+        if color in library.color:
+            return library.color[color] + message + library.color['normal']
+        else:
+            # No color found
+            return message
+
+    # color not supported
+    else:
+        return message
+
+
+def msg(message, error=None):
+    """ Print an message """
+
+    output = ""
+
+    # Put together the output message
+    if not error:
+        output = color("Mux Weather: ", "yellow") + message
+        print(output)
+
+    # If it's an error message, print to stderr and exit with code 1.
+    else:
+        output = color("Mux Weather: ", "red") + str(message)
+        sys.stderr.write(output)
+        sys.exit(1)
 
 
 def populate_report(yahoo, moon):
@@ -218,18 +242,22 @@ and the USNO Atrological API http://aa.usno.navy.mil/data/docs/api.php.
 Weather Underground was great but it's no longer free use for developers! Boo!
 """
 
-    print("Mux Weather: Generating weather.txt")
-
     if args.path:
-        path = args.path
+
+        # Is path a directory?
+        if os.path.isdir(args.path[0]):
+            path = args.path[0]
+
+        else:
+            msg("Error: Path not found: " + color(args.path[0], "yellow"), error=True)
+
+    # No path provided.  Print in current working directory.
     else:
-        path = ""
+        path = os.getcwd() + '\\'
 
-    fullpath = path + 'weather.txt'
-    if args.verbose:
-        if args.path:
-            print("Mux Weather: File path: {}".format(args.path))
+    fullpath = os.path.abspath(path + 'weather.txt')
 
+    msg("Generating File: " + color(fullpath, "bold"))
     try:
         with open(fullpath, 'w') as file:
 
@@ -238,56 +266,77 @@ Weather Underground was great but it's no longer free use for developers! Boo!
             file.write(file_credits)
 
     except Exception as e:
-        print(e)
-        sys.stderr.write('{}: error: could not open weather.txt.\n'.format(sys.argv[0]))
-        sys.exit(1)
+        msg(e, error=True)
     else:
-        if args.verbose:
-            print("Mux Weather: {} generated.".format(fullpath))
-        print("Mux Weather: Update Complete: {}".format(
-            datetime.datetime.today().strftime('%m.%d.%Y %H:%M:%S')))
+        msg("Update Complete: " + color(
+            datetime.datetime.today().strftime('%m.%d.%Y %H:%M:%S'), "bold"))
         sys.exit(0)
 
 
 def main():
     """ main entry point of the script. """
 
-    print("Welcome to Mux Weather")
-    print("Mux Weather: Start time: {}".format(
-        datetime.datetime.today().strftime('%m.%d.%Y %H:%M:%S')))
+    msg("Script Activated.")
+
+    msg("Start time: " +
+        color(datetime.datetime.today().strftime('%m.%d.%Y %H:%M:%S'), "bold"))
 
     if args.verbose:
-        print("Mux Weather: Connecting to API:")
-        print("-----------------------------------------------")
+        msg("Starting connections:")
+        print("-------------------------------------------------")
 
-    yahoo = Struct(yahoo_connect(args.location))
-    moon = Struct(usno_connect(args.location))
-    geocode = Struct(google_geocode(args.location))
+    yahoo_url = 'https://query.yahooapis.com/v1/public/yql?q=select * from\
+    weather.forecast where woeid in (select woeid from geo.places(1) \
+    where text="{}")&format=json'.format(args.location)
 
-    # if google didn't return with a location throw an error and exit,
-    # else generate the report. Also error if the connection times out
-    # and locality doesn't populate.
+    # get today's date
+    today = datetime.datetime.today().strftime('%m/%d/%Y')
+
+    # USNO (Sun moon Database) URL strung.
+    usno_url = 'http://api.usno.navy.mil/rstt/oneday?date={}&loc={}'.format(today, args.location)
+
+    yahoo = Struct(connect(url=yahoo_url,
+                           name="Yahoo Weather",
+                           location=args.location))
 
     try:
 
-        if not geocode.results[0].address_components[0].types[0] == "locality":
-            sys.stderr.write('{}: error: location not found.\n'.format(sys.argv[0]))
-            sys.exit(1)
-        else:
+        # If Yahoo found a location
+        if yahoo.query.count:
+            city = yahoo.query.results.channel.location.city
+            region = yahoo.query.results.channel.location.region
+
+            # If verbose show information about location.
+            if args.verbose:
+                msg("Location found: " + color(city + "," + region, "bold"))
+
+            location = city + "," + region
+
+            # Connect to the USNO database
+            moon = Struct(connect(url=usno_url,
+                                  name="USNO Database",
+                                  location=location))
+
+            # Generate reports
             report = populate_report(yahoo, moon)
             generate_report(report)
 
-    except IndexError:
-        sys.stderr.write('{}: error: geolocation error.\n'.format(sys.argv[0]))
-        sys.exit(1)
+        # Else error and exit.
+        else:
+            msg("Error: Couldn't find a matching location.", error=True)
+
+    except AttributeError:
+        msg("Error: Couldn't resolve " + color("Yahoo API.", "bold"), error=True)
 
 
 if __name__ == '__main__':
 
     # Setup argparse
-    parser = argparse.ArgumentParser("Generate a weather report.")
+    parser = argparse.ArgumentParser(description="Generate a weather report.",
+                                     prog="weather.py")
     parser.add_argument('-p',
                         '--path',
+                        nargs=1,
                         metavar="",
                         help="Path to store weather.txt")
     parser.add_argument('location',
