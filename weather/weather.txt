@@ -1,0 +1,29 @@
+& help
+This is the weather system raw data file.
+
+conditions: Weather conditions
+Credits: Thanks and credits
+Last run: 08.20.2018 22:43:34
+
+& conditions
+conditions: Mostly Cloudy
+temperature: 79 F (26.11 C)
+wind: 14 MPH SSW (22.53 KPH)
+pressure: 1017.0 mb (30.03 inHg)
+visibility: 16.1 miles (25.91 km)
+humidity: 88%%
+sunrise: 1534771860
+sunset: 1534818960
+moonrise: 1534804620
+moonset: 1534754040
+moon_phase: Waxing Gibbous (73%%)
+
+& credits
+PHP and TinyMUX code originally by Brus using the Yahoo Weather API.
+
+Rewritten by Thenomain using the Weather Underground API.
+
+Re-rewritten by Death@CrescentMoonMux https://github.com/lcanady to
+use Python and the Yahoo Weather API (again!) https://www.yahoo.com/?ilc=401,
+and the USNO Atrological API http://aa.usno.navy.mil/data/docs/api.php.
+Weather Underground was great but it's no longer free use for developers! Boo!
