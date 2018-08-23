@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
-#
-# Weather.py
-#
-# USAGE:
-#   ./weather.py --help
-#   ./weather.py "Location (Alexandria, VA)" -p /path/to/game/text/folder
-#
-# Before you can run the script you're going to have have to set it
-# executable:  chmod weather.py +x
-#
-#############################################################################
+
+"""
+Title: Mux Weather
+Author: Lem Canady (Death@CrescentMoonMux)
+
+https://github.com/lcanady/CrescentMoonMux/
+
+Description:  This script processes weather information from Yahoo Weather,
+and strological information from the USNO to compile a text file to be used
+in a TinyMux chat server to power an in-game weather system.
+
+Usage:
+    ./weather.py --help
+    ./weather.py "location (Alexandria, VA)" -p path/to/game/text/folder
+
+Returns: weather.txt
+
+"""
 
 import re
 import requests
@@ -34,13 +41,15 @@ class Struct(object):
             return Struct(value) if isinstance(value, dict) else value
 
     def __repr__(self):
-        return '{%s}' % str(', '.join("'%s': %s" % (k, repr(v)) for (k, v) in self.__dict__.items()))
+        return '{%s}' % str(', '.join("'%s': %s" % (k, repr(v))
+                                      for (k, v) in self.__dict__.items()))
 
 
 class Conditions(object):
     """ Framework for the the weather condition entries """
 
     def __init__(self):
+        """ Inititate all required attributes to empty strings """
         self.conditions = ""
         self.temperature = ""
         self.wind = ""
@@ -58,6 +67,8 @@ class ColorDatabase(object):
     """ Small color database """
 
     def __init__(self):
+        """ Build a dictionary of color escape codes that can be
+        called on by name """
         self.color = {"black": "\u001b[30m",
                       "red": "\u001b[31m",
                       "green": "\u001b[32m",
@@ -92,35 +103,7 @@ def degToCompass(num):
     return arr[(val % 16)]
 
 
-def epoch(string, timezone):
-    """ Convert a time string into epoch seconds for MUX consumption """
-
-    # Get current date
-    date = datetime.datetime.today().strftime('%m.%d.%Y')
-
-    # Use regular expressions to break the time string apart.
-    regex = re.match("^(\d:\d{2})\s(\w\.\w\.)", string)
-
-    if regex.group(2) == "a.m.":
-        ampm = "AM"
-    else:
-        ampm = "PM"
-
-    # Build UTC Offset string.  This is kind of hacky and I'm pretty
-    # sure it won't work for all cases.  I'll have to come back through
-    # and fix this logic later!
-    x = str(timezone)
-    tz = x[0] + '0' + x[1:2] + '00'
-
-    # Format date_time string
-    date_time = "{} {} {} {}".format(date, regex.group(1), ampm, tz)
-    pattern = "%m.%d.%Y %I:%M %p %z"
-    epoch = int(time.mktime(time.strptime(date_time, pattern)))
-
-    return epoch
-
-
-def connect(location, url, name):
+def connect(url, name):
     """ Connect to API Sources """
 
     if args.verbose:
@@ -188,7 +171,7 @@ def msg(message, error=None):
         sys.exit(1)
 
 
-def populate_report(yahoo, moon):
+def populate_report(yahoo, moon, tz):
     """ Prep the weather object to be writen to weather.txt """
 
     weather = Conditions()
@@ -208,10 +191,10 @@ def populate_report(yahoo, moon):
     weather.visibility = "{} miles ({} km)".format(
         yahoo.query.results.channel.atmosphere.visibility,
         round(float(yahoo.query.results.channel.atmosphere.visibility) * 1.60934, 2))
-    weather.sunrise = str(epoch(moon.sundata[1].time, moon.tz))
-    weather.sunset = str(epoch(moon.sundata[3].time, moon.tz))
-    weather.moonrise = str(epoch(moon.moondata[1].time, moon.tz))
-    weather.moonset = str(epoch(moon.moondata[0].time, moon.tz))
+    weather.sunrise = moon.sundata[1].time
+    weather.sunset = moon.sundata[3].time
+    weather.moonrise = moon.moondata[1].time + '|' + str(int(tz))
+    weather.moonset = moon.moondata[0].time + '|' + str(int(tz))
     weather.moon_phase = "{} ({}%)".format(moon.curphase, moon.fracillum)
 
     return weather
@@ -238,7 +221,9 @@ Rewritten by Thenomain using the Weather Underground API.
 
 Re-rewritten by Death@CrescentMoonMux https://github.com/lcanady to
 use Python and the Yahoo Weather API (again!) https://www.yahoo.com/?ilc=401,
-and the USNO Atrological API http://aa.usno.navy.mil/data/docs/api.php.
+and the USNO Atrological API http://aa.usno.navy.mil/data/docs/api.php, with
+a little Google Timezones API to help bridge the two:
+https://developers.google.com/maps/documentation/timezone/start
 Weather Underground was great but it's no longer free use for developers! Boo!
 """
 
@@ -253,7 +238,7 @@ Weather Underground was great but it's no longer free use for developers! Boo!
 
     # No path provided.  Print in current working directory.
     else:
-        path = os.getcwd() + '\\'
+        path = os.getcwd() + '/'
 
     fullpath = os.path.abspath(path + 'weather.txt')
 
@@ -282,7 +267,7 @@ def main():
         color(datetime.datetime.today().strftime('%m.%d.%Y %H:%M:%S'), "bold"))
 
     if args.verbose:
-        msg("Starting connections:")
+        msg("Attempting connections:")
         print("-------------------------------------------------")
 
     yahoo_url = 'https://query.yahooapis.com/v1/public/yql?q=select * from\
@@ -292,33 +277,47 @@ def main():
     # get today's date
     today = datetime.datetime.today().strftime('%m/%d/%Y')
 
-    # USNO (Sun moon Database) URL strung.
-    usno_url = 'http://api.usno.navy.mil/rstt/oneday?date={}&loc={}'.format(today, args.location)
-
     yahoo = Struct(connect(url=yahoo_url,
-                           name="Yahoo Weather",
-                           location=args.location))
+                           name="Yahoo Weather"))
 
     try:
 
         # If Yahoo found a location
         if yahoo.query.count:
+
             city = yahoo.query.results.channel.location.city
             region = yahoo.query.results.channel.location.region
+            lat = yahoo.query.results.channel.item.lat
+            lon = yahoo.query.results.channel.item.long
 
             # If verbose show information about location.
             if args.verbose:
                 msg("Location found: " + color(city + "," + region, "bold"))
 
-            location = city + "," + region
+            # Google Timezone API
+            ts = datetime.datetime.now().timestamp()
+            google_url = 'https://maps.googleapis.com/maps/api/timezone/json?location=\
+            {},{}&timestamp={}'.format(lat, lon, ts)
+
+            google = Struct(connect(url=google_url,
+                                    name="Google Timezones API"))
+
+            # calculate UTC Timezone
+            tz = google.rawOffset / 3600
+
+            # USNO (Sun moon Database) URL strung.
+            usno_url = 'http://api.usno.navy.mil/rstt/oneday?date=\
+            {}&coords={},{}&tz={}'.format(today, lat, lon, int(tz))
 
             # Connect to the USNO database
             moon = Struct(connect(url=usno_url,
-                                  name="USNO Database",
-                                  location=location))
+                                  name="USNO Database"))
+
+            if args.verbose:
+                print("-------------------------------------------------")
 
             # Generate reports
-            report = populate_report(yahoo, moon)
+            report = populate_report(yahoo, moon, tz)
             generate_report(report)
 
         # Else error and exit.
@@ -337,7 +336,7 @@ if __name__ == '__main__':
     parser.add_argument('-p',
                         '--path',
                         nargs=1,
-                        metavar="",
+                        metavar="PATH",
                         help="Path to store weather.txt")
     parser.add_argument('location',
                         type=str,
