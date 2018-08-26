@@ -193,10 +193,18 @@ def populate_report(yahoo, moon, tz):
         round(float(yahoo.query.results.channel.atmosphere.visibility) * 1.60934, 2))
     weather.sunrise = moon.sundata[1].time
     weather.sunset = moon.sundata[3].time
-    weather.moonrise = moon.moondata[1].time + '|' + str(int(tz))
-    weather.moonset = moon.moondata[0].time + '|' + str(int(tz))
-    weather.moon_phase = "{} ({}%)".format(moon.curphase, moon.fracillum)
 
+    if hasattr('moon', 'curphase'):
+        weather.moonrise = moon.moondata[2].time + '|' + str(int(tz))
+        weather.moonset = moon.moondata[1].time + '|' + str(int(tz))
+    else:
+        weather.moonrise = moon.moondata[2].time + '|' + str(int(tz))
+        weather.moonset = moon.moondata[1].time + '|' + str(int(tz))
+
+    if hasattr('moon', 'curphase'):
+        weather.moon_phase = "{} ({}%)".format(moon.curphase, moon.fracillum)
+    else:
+        weather.moon_phase = "Unavailable"
     return weather
 
 
@@ -296,14 +304,13 @@ def main():
 
             # Google Timezone API
             ts = datetime.datetime.now().timestamp()
-            google_url = 'https://maps.googleapis.com/maps/api/timezone/json?location=\
-            {},{}&timestamp={}'.format(lat, lon, ts)
+            google_url = 'https://maps.googleapis.com/maps/api/timezone/json?location={},{}&timestamp={}'.format(lat, lon, ts)
 
             google = Struct(connect(url=google_url,
                                     name="Google Timezones API"))
 
             # calculate UTC Timezone
-            tz = google.rawOffset / 3600
+            tz = round((google.rawOffset + google.dstOffset) / 3600, 0)
 
             # USNO (Sun moon Database) URL strung.
             usno_url = 'http://api.usno.navy.mil/rstt/oneday?date=\
@@ -324,8 +331,8 @@ def main():
         else:
             msg("Error: Couldn't find a matching location.", error=True)
 
-    except AttributeError:
-        msg("Error: Couldn't resolve " + color("Yahoo API.", "bold"), error=True)
+    except Exception as e:
+        msg("Error: " + str(e), error=True)
 
 
 if __name__ == '__main__':
