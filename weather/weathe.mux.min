@@ -1,0 +1,8 @@
+&bio.werewolf here=%chAuspice:%cn stat/set Auspice=<Auspice>%r                                      %chTribe:%cn stat/set Tribe=<Tribe>%r                                             %chBlood:%cn stat/set Blood=<Blood>%r                                             %chBone:%cn stat/set Bone=<Bone>%r                                                %chLodge:%cn stat/set Lodge=<Lodge>
+
+@@ 6 lines processed
+@@ 1 lines resulting
+@@ WARNING (LN 2): 38 trailing spaces
+@@ WARNING (LN 3): 45 trailing spaces
+@@ WARNING (LN 4): 45 trailing spaces
+@@ WARNING (LN 5): 48 trailing spaces
