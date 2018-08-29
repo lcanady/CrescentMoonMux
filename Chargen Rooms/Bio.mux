@@ -76,7 +76,7 @@ Short lists on the commands needed to set bio entries of the character sheet.
     %chDirge:%cn stat/set Dirge=<Dirge>%r
     %chEmbrace Date:%cn stat/set Embrace=<Month Day Year>%r
     %chMystery (OD Only):%cn stat/set Mystery=<Mystery>%r
-
+    %chGender:%cn @sex me=<Male/Female/yes/no/whatever>%r
 -
 
 &bio.ghoul here=
@@ -89,6 +89,79 @@ Short lists on the commands needed to set bio entries of the character sheet.
     %chGender:%cn @sex me=<Male/Female/yes/no/whatever>%r
 -
 
+&bio.werewolf here=
+    %chAuspice:%cn stat/set Auspice=<Auspice>%r
+    %chTribe:%cn stat/set Tribe=<Tribe>%r
+    %chBlood:%cn stat/set Blood=<Blood>%r
+    %chBone:%cn stat/set Bone=<Bone>%r
+    %chBirthdate:%cn stat/set Birthdate=<Month Day Year>%r
+    %chLodge:%cn stat/set Lodge=<Lodge>%r
+    %chGender:%cn @sex me=<Male/Female/yes/no/whatever>
 
 
-birthdate concept clan coterie Regnant template virtue vice
+#/
+=============================================================================
+=== Command: Restart ========================================================
+
+Reset all of the bio fields except for template and concept.
+
+/#
+
+&c.restart here=$^\+?restart$:
+    [setq( 0, filter( %!/filter.bio, lattr( %#/_BIO* )))];
+
+    @dolist %q0={ &## %#=; };
+
+    @pemit %#= [u( .msg, Chargen, Bio section cleared.)]
+-
+@set here/c.restart=regex
+-
+
+#/
+-----------------------------------------------------------------------------
+--- Filter.Bio --------------------------------------------------------------
+/#
+
+&filter.bio here=
+    not(match(_BIO.CONCEPT _BIO.TEMPLATE _BIO.SPHERE, %0))
+-
+
+*/
+-----------------------------------------------------------------------------
+---- Exit Lock: Next <N> ----------------------------------------------------
+
+There are certain things that /have/ to be set in this room, or they break
+stuff later in chargen!
+
+/*
+
+@set n=inherit
+-
+
+@lock/defaultlock n = lock/1
+-
+
+&lock n =
+    or(
+        udefault( %!/lock.[getstat(%#/template)], 1, %# ),
+        orflags(%#,wWZ)
+    )
+-
+
+&lock.werewolf n=
+        hasattr(%0,_bio.auspice)
+-
+
+@fail n=%ch<Chargen>%cn To continue forward the following must be set:%b
+    %ch[v( bio.[getstat( %#/template )])]%cn
+
+-
+
+&bio.werewolf n = Auspice
+
+#/
+-----------------------------------------------------------------------------
+--- .msg --------------------------------------------------------------------
+/#
+
+&.MSG here= ansi( h, <%0>, n, %b%1 )

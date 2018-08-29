@@ -3,20 +3,20 @@ This is the weather system raw data file.
 
 conditions: Weather conditions
 Credits: Thanks and credits
-Last run: 08.21.2018 08:19:45
+Last run: 08.26.2018 10:24:58
 
 & conditions
-conditions: Mostly Cloudy
-temperature: 85 F (29.44 C)
-wind: 18 MPH W (28.97 KPH)
-pressure: 1018.0 mb (30.06 inHg)
+conditions: Partly Cloudy
+temperature: 88 F (31.11 C)
+wind: 14 MPH ESE (22.53 KPH)
+pressure: 1020.0 mb (30.12 inHg)
 visibility: 16.1 miles (25.91 km)
-humidity: 83%%
-sunrise: 1534858260
-sunset: 1534905300
-moonrise: 1534894080
-moonset: 1534843140
-moon_phase: Waxing Gibbous (81%%)
+humidity: 66%%
+sunrise: 06:33
+sunset: 19:29
+moonrise: 19:54|-5
+moonset: 06:34|-5
+moon_phase: Unavailable :(
 
 & credits
 PHP and TinyMUX code originally by Brus using the Yahoo Weather API.
@@ -25,5 +25,7 @@ Rewritten by Thenomain using the Weather Underground API.
 
 Re-rewritten by Death@CrescentMoonMux https://github.com/lcanady to
 use Python and the Yahoo Weather API (again!) https://www.yahoo.com/?ilc=401,
-and the USNO Atrological API http://aa.usno.navy.mil/data/docs/api.php.
+and the USNO Atrological API http://aa.usno.navy.mil/data/docs/api.php, with
+a little Google Timezones API to help bridge the two:
+https://developers.google.com/maps/documentation/timezone/start
 Weather Underground was great but it's no longer free use for developers! Boo!

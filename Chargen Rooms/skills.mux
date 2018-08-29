@@ -303,4 +303,111 @@ Primary, Secondary and tertiary.
         { @pemit %#=[u( .msg, Choose, I don't recognize that combination. )] }
 -
 @set here/c.choose = regex
+-
 
+&filter.renown here=
+    hastag?(%0, getstat(%1/auspice))
+-
+&filter.tribe here=
+    hastag?(%0, getstat(%1/tribe))
+-
+
+
+#/
+=============================================================================
+==== Exit Settings ==========================================================
+
+/#
+
+@asucc next =
+    @if [not( hasattr( %#,_mpoints ))]=
+    {
+        &_mpoints %#=10;
+        @pemit %#=[u([home(me)]/.msg, Game, Merit points set to %ch10%cn.)]
+    };
+
+    @if [and(match(getstat(%#/template), Vampire), not( hasattr( %#,_dpoints )))]=
+    {
+        &_dpoints %#=3;
+        @pemit %#=[u([home(me)]/.msg, Game, Discipline points set to %ch3%cn.)]
+    };
+
+    @if [and(match(getstat(%#/template), werewolf), not( lattr( %#/_RENOWN* )) )]=
+    {
+        [setq( 0,
+            [iter(
+                lattr( %va/RENOWN.* ),
+                after( ##, RENOWN. )
+            )]
+        )]
+        [setq( 1, filter( #221/filter.renown, %q0,,,%# ) )]
+        [setq( 2, filter( #221/filter.tribe, %q0,,,%# ) )]
+        [setstat(%#/%q1,1)]
+        [setstat(%#/%q2,1)];
+        @pemit %#=[u( #221/.msg, Chargen, %chAuspice%cn Renown set: %ch[capitalize(%q1)]%cn )];
+        @pemit %#=[u( #221/.msg, Chargen, %chTribal%cn Renown set:%b
+                        [capitalize(if(%q2,%ch%q2%cn,none) )]
+                   )];
+        [setq(3, lmax( iter(%q0, getstat( %#/## ))))]
+        [setq(4,
+            filter(
+                #221/filter.renown,
+                iter(lattr(%va/GIFT.*_MOON'S_GIFT), after( ##, .)),,,
+                %#
+            )
+        )]
+        [setstat( %#/%q4, %q3)];
+        [setstat( %#/language(first Tongue), 1)];
+        [setstat( %#/totem, 1)];
+        @pemit %#=[u( .msg, Chargen, [name(%q4)] Set.)];
+        &_gifts %#=2;
+
+    }
+-
+
+##---------------------------------------------------------------------------
+
+@fail n=
+    %ch%crWARNING!!%cn Once you leave this section of character generation,%b
+        you won't be able to return without starting over!%b
+        To continue, type '%ch%cy+NEXT%cn'.
+-
+
+##---------------------------------------------------------------------------
+
+&lock n=
+    or(
+        orflags(%#,wWZ),
+        hasattr(%#,_next)
+    )
+-
+
+##---------------------------------------------------------------------------
+
+&c.next here=$+next:
+
+    &_next %#=1;
+
+    @fo %#=n;
+
+    @pemit %#=%ch<%cnChargen%ch>%cn You accept and continue with Chargen.
+-
+
+=============================================================================
+=== Command: Restart ========================================================
+
+&c.restart here=$^\+?restart$:
+
+    [setq( 0, lattr(%#/_skill*) )];
+
+    @dolist %q0 = {&## %#=;};
+
+    &_smental %#=;
+    &_sphysical %#=;
+    &_ssocial %#=;
+    &_spec %#=;
+
+    @pemit %#=[u( .msg, Chargen, Skills cleared. )]
+
+-
+&.MSG here= ansi( h, <%0>, n, %b%1 )

@@ -78,3 +78,18 @@ directions and footer instrutctions.
             %b%b
         )
     )
+
+#/
+=============================================================================
+=== Command: Restart ========================================================
+
+Restart all chargen stats at this stage, since the player is clearing their
+template/concept.
+
+/#
+
+&c.restart here=$^\+?restart$:
+    @dolist lattr(%#/_*) = &## %#=;
+    @pemit %#=[u( .msg, Chargen, Sheet cleared. )]
+-
+@set here/c.restart = regex

@@ -233,4 +233,31 @@ Primary, Secondary and tertiary.
         { @pemit %#=[u( .msg, Attributes/Choose, I don't recognize that combination. )] }
 -
 @set here/c.choose = regex
+-
+
+#/
+=============================================================================
+=== Command: Restart ========================================================
+
+Reset all attributes to default values.
+
+/#
+
+&c.restart here=$^\+?restart$:
+
+## Gather the default attributes from the data object
+    [setq( 0, lattr( %va/DEFAULT.ATTRIBUTE* ))];
+
+## Reset the values of the players Attributes
+    @dolist %q0={ &_[after(##,.)] %#=[get(%va/##)]; };
+
+## Ciear point pools
+    &_physical %#=;
+    &_mental %#=;
+    &_social %#=;
+
+    @pemit %#=[u( .msg, Chargen, Attributes reset.)]
+
+-
+@set here/c.restart =regex
 

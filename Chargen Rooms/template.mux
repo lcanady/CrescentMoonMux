@@ -1,4 +1,4 @@
-#/
+*/
 ##############################################################################
 ### Character Generation Template Room #######################################
 
@@ -8,18 +8,21 @@ This is the room used to set superatural templates on Crescent Moon Mux
 
 Requires:
     Global Room Parent <GRP>
-
+    Thenomian's GMCCG System ( https://github.com/thenomain/GMCCG )
+    header()
+    footer()
 
 ------------------------------------------------------------------------------
 --- @desc --------------------------------------------------------------------
 
 The room @desc is broken up into 4 parts; The intro, the 'stat block',
 directions and footer instrutctions.
-/#
+/*
 
 @desc here=
-    %r%t[u(intro)]%r%r[u( #54/block.powers.[getstat(%#/template)], %#, getstat(%#/template) )]%r
-    [repeat(%cr-%cn,78)]%r[u( #54/block.traits.[getstat(%#/template)] )]%r%r
+    %r%t[u(intro)]%r%r[u( #54/block.powers.[getstat(%#/template)], %#, getstat(%#/template) )]
+    [header(Template Traits)]%r[u( #54/block.traits.[getstat(%#/template)], %# )]
+    [repeat(%cr-%cn,78)]%r%r
     [u( desc.[ getstat(%#/template )] )]
     %r%r
     [u( .footer )]%r
@@ -27,19 +30,19 @@ directions and footer instrutctions.
 
 @va here=#14
 -
-#/
+*/
 ------------------------------------------------------------------------------
 --- Intro Text ---------------------------------------------------------------
-/#
+/*
 
 &intro here= In this room we're going to set your character's template if it needs to be set. Follow the directions listed in the description.
 -
 
 
-#/
+*/
 ------------------------------------------------------------------------------
 --- .footer ------------------------------------------------------------------
-/#
+/*
 
 &.footer here=
     Type '%chNext%cn' to continue to [eval( default( me/next, the next step. ))]%r
@@ -47,17 +50,122 @@ directions and footer instrutctions.
     Type '%chrestart%cn' to begin this step from the beginning again.%r
     Type '%chabort%cn' to leave character generation.
 -
+&desc.human here=
+    Your template doesn't have any additional rules to apply.  You can continue%b
+    onto %chMerits%cn.
+-
+
+&desc.vampire here=
+    %chFavored Attribute:%cn [default(#/_attr,%ch<%cxnot set%cn%ch>%cn)]
+    %r%chDiscipline Points:%cn [default(%#/_dpoints,0)]
+    %r%chMerit Points:%cn [default(%#/_mpoints,0)]
+    %r%rType '%chcommands vampire%cn' to see your list of template commands.
+-
+&desc.werewolf here=
+    %chAuspice Skill:%cn [default(#/_skill,%ch<%cxnot set%cn%ch>%cn)]
+    %r%chPersonal Renown:%cn [default(#/_renown,%ch<%cxnot set%cn%ch>%cn)]
+    %r%chGift Facets:%cn [default(%#/_gifts,0)]
+    %r%chRites:%cn [default(%#/_rites,0)]
+    %r%chMerit Points:%cn [default(%#/_mpoints,0)]
+    %r%rType '%chcommands werewolf%cn' to see your list of template commands.
+-
+
+-
+*/
+=============================================================================
+=== Command: Commands =======================================================
+
+SHows a list of extra commands, depending on sphere.
+
+SYNTAX:
+    commands <sphere>
+
+/*
+
+&c.commands here=$^\+?commands(.*)?$:
+
+    @if [match( v(d.categories), [lcstr(trim( %1 ))], |)]=
+    {
+        @pemit %#=[u( commands.[trim( %1 )] )]
+    },
+    {
+        @pemit %#=
+            [u( .msg, Commands, Valid categories are%b
+                [itemize(
+                    iter(
+                        v( d.categories ),
+                        %ch[capitalize( ## )]%cn, |, |
+                    ) , |
+                )]
+
+            )]
+    }
+-
+@set here/c.commands=regex
+-
+
+*/
+-----------------------------------------------------------------------------
+--- d.categories ------------------------------------------------------------
+/*
+
+&d.categories here=vampire|werewolf
+-
+
+*/
+-----------------------------------------------------------------------------
+--- commands.<TEMPLATE> -----------------------------------------------------
+
+/*
+
+&commands.vampire here=
+    Type '%chattributes%cn' to see your clans favored attributes.
+    %rType '%chattribute <attribute>%cn' to choose your favored attribute.
+    %rType '%chattribute/clear%cn' to clear your favored attribute.
+    %rType '%chdisplines%cn' to see the list of available disciplines.
+    %rType '%chdiscipline/buy <disipline>%cn' to buy a discipline.
+    %rType '%chdiscipline/sell <disipline>%cn' to sell a discipline.
+    %rType '%chpotency/buy%cn' To buy a point of blood potency.
+    %rType '%chpotency/sell%cn' To sell a point of blood potency.
+-
+
+&commands.werewolf here=
+    Type '%chskills%cn' to see your Auspice's favored skills.
+    %rType '%chskill <skill>%cn' to set your Auspice skill.
+    %rType '%chskill/clear%cn' to clear your Auspice skill.
+    %rType '%chrenown <renown>%cn' Set your personal Renown.
+    %rType '%chrenown/reset%cn' Reset your personal Renown.
+    %rType '%chprimal/buy%cn' to buy a point of Primal Urge.
+    %rType '%chprimal/sell%cn' to sell a point of Primal Urge.
+    %rType '%chgifts%cn' to see a list of Gifts.
+    %rType '%chgift <gift>=<Renown>%cn' to buy a Gift.
+    %rType '%chgift <moon gift>%cn' purchase an extra point of your moon Gift.
+    %rType '%chgift/sell <gift>=<renown>%cn' sell a Gift.
+    %rType '%chrites%cn' to see a list of Rites.
+    %rType '%chrite/buy <rite>%cn' to buy a Rite.
+    %rType '%chrite/sell <rite>%cn' to sell a Rite.
+    %rType '%chrite/trade <merit points>%cn' to trade Merit points for Rites.
+    %rType '%chrites/reset%cn' to reset your rites.
 
 
-#/
+*/
+#############################################################################
+### Vampire #################################################################
+
+The following commands are for the VtR Portion of the template room.
+
+/*
+
+
+*/
 =============================================================================
 === Command: attribute (Vampire) ============================================
 
 The command for vampires to set their favored attriute based on clan selection.
 
-/#
+/*
 
-&c.favored-attribute here=$^\+?at[tribute]+\s(.*)$:
+&c.favored-attribute here=$^\+?atttribute\s(.*)$:
 
     @Switch [match( getstat( %#/template ), Vampire )]
             [not(hasattr(%#,_attr))]
@@ -101,7 +209,30 @@ The command for vampires to set their favored attriute based on clan selection.
 
 -
 
-#/
+##---------------------------------------------------------------------------
+
+&c.favored-attribute.list here=$^\+?attributes$:
+    @assert match( getstat( %#/template ), Vampire )=
+     { @pemit %#=Permission denied. };
+
+    [setq(0,
+        filter(
+            %!/filter.favored-attributes,
+            iter(
+                lattr( %va/ATTRIBUTE.*),
+                [capitalize(after( ##, . ))]
+            ),,,
+            %#
+        )
+    )];
+    @pemit %#=[u( .msg, Attributes, Favored attributes for clan %ch[getstat(%#/clan)]%cn%b
+        are [itemize(iter(%q0,%ch##%cn))]. )]
+-
+@set here/c.favored-attribute.list = regex
+-
+&filter.favored-attributes here= hastag?( %0, getstat( %1/clan ))
+-
+*/
 =============================================================================
 === Command: Disciplines (vampire) ==========================================
 
@@ -111,9 +242,9 @@ Chargen Discipline management system
   disciplines/buy  <discipline>   - buy disciplines
   disciplines/sell <discipline>   - sell disciplines
 
-/#
+/*
 
-&c.disciplines here=$^\+?disciplines(.*)?$:
+&c.disciplines here=$^\+?disciplines?(.*)?$:
 
 ## Make sure the player is either a vampire or a ghoul first.
 
@@ -128,22 +259,22 @@ Chargen Discipline management system
         [setq( 0, %1 )]
         [switch( strtrunc( %q0, 1 ),
             @@(null), u( f.disc.list, %#),
-            /,  u( f.disc.switch %#, lcstr( after( %0, / ))),
-            %b, u(f.disc.specific %#, %0 ),
+            /,  u( f.disc.switch, %#, lcstr( after( %0, / ))),
+            %b, u(f.disc.specific, %#, %0 ),
             u( .msg, Disciplines, Unrecognized option.)
-    )]
+        )]
 
 -
 @set here/c.disciplines =regex
 -
 
-#/
+*/
 -----------------------------------------------------------------------------
 --- f.disc.list -------------------------------------------------------------
 
 List all of the disciplines the character is eligable for.
 
-/#
+/*
 
 
 &f.disc.list here=
@@ -165,34 +296,34 @@ List all of the disciplines the character is eligable for.
     You have %ch[get(%0/_dpoints)]%cn discipline points left.
 -
 
-#/
+*/
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
-/#
+/*
 
 &filter.disciplines here = udefault(%va/prerequisite.discipline.%0,1,%1 )
 
 -
 
-#/
+*/
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
-/#
+/*
 
 
 &f.disc.switch here=
     switch(1,
-        strmatch( %1, sell ),
-        u( f.disc.sell, %0, %1 ),
-        strmatch( %1, buy ),
-        u( f.disc.buy, %0, %1 )
+        strmatch( first( %1 ), sell ),
+        u( f.disc.sell, %0, rest( %1 )),
+        strmatch( first( %1 ), buy),
+        u( f.disc.buy, %0, rest( %1 ))
     )
 -
 
-#/
+*/
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
-/#
+/*
 
 &f.disc.buy here=
     switch(
@@ -208,7 +339,7 @@ List all of the disciplines the character is eligable for.
     110,     u( .msg, Disciplines, You have already selected an out of clan discipline. ),
     111,
             [shiftstat(%0/%1,1)]
-            [set( %0,_dpoints: [dec(get(%0/_dpoints))] )]
+            [set( %0,_dpoints: [dec(get(%0/_dpoints))] )];
             [pemit(
                 *%0,
                 u( .msg, Disciplines, Discipline point spent. You have
@@ -223,10 +354,10 @@ List all of the disciplines the character is eligable for.
     )
 -
 
-#/
+*/
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
-/#
+/*
 
 &f.disc.sell here=
     switch(
@@ -250,19 +381,844 @@ List all of the disciplines the character is eligable for.
             )]
             [pemit(
                 *%0,
-                u( .msg, Disciplines, Discipline point returned. You have
+                u( .msg, Disciplines, [statname(%1)] point returned. You have
                     %ch[get(%0/_dpoints)]%cn points left.
                 )
             )]
 
     )
 
+*/
+==============================================================================
+=== Command: Potency (Vampire) ===============================================
+
+SYNTAX:
+    potency/buy
+    potency/sell
+
+Buying a point of potency costs 5 merit points.  Potency can't be raised
+above 3 at chargen.
+
+/*
+
+&c.potency here=$^\+?potency(.*)$:
+
+    @assert match(getstat(%#/template), Vampire) =
+    {
+        @pemit %#=Permission denied.
+    };
+
+## Find the command entry point
+
+    @switch [match( lcstr( %1 ), /buy )]
+            [match( lcstr( %1 ), /sell )]=
+    10, {@pemit %#=[u( f.potency.buy, %# )]},
+    01, {@pemit %#=[u( f.potency.sell, %# )]},
+        {@pemit %#=u( .msg, Potency, Unknown switch.)}
+-
+@set here/c.potency=regex
+-
+*/
+-----------------------------------------------------------------------------
+--- f.potency.buy -----------------------------------------------------------
+
+0: Target player object.
+
+/*
+
+&f.potency.buy here=
+        switch( [match( getstat( %0/template ), Vampire )]
+                [gte( sub( get(%0/_mpoints ), 5 ), 0 )]
+                [lte( inc( getstat( %0/blood potency )), 3 )],
+            0??, Permission denied.,
+            10?, u( .msg, Potency, You don't have enough merit points left. ),
+            110, u( .msg, Potency, You can't raise your %chBlood Potency%cn above %ch3%cn),
+            111, [setstat( %0/blood potency, inc( getstat( %0/blood potency )))]
+                    [set( %0,_mpoints: [sub( get(%0/_mpoints), 5 )])]
+                    %r[u( .msg, Potency, You have%ch[get(%0/_mpoints)]%cn merit points left.)]
+        )
+
+*/
+-----------------------------------------------------------------------------
+--- f.potency.sell ----------------------------------------------------------
+/*
+
+&f.potency.sell here=
+    switch( [match( getstat( %0/template ), Vampire )]
+            [gte( dec( getstat( %0/blood potency )), 1 )],
+        0?, Permission Denied.,
+        10, u( .msg, Potency, You can't lower your %chBlood Potency%cn any further.),
+        11, [setstat( %0/blood potency, dec( getstat( %0/blood potency )))]
+            [set( %0,_mpoints: [add( get(%0/_mpoints), 5 )])]
+                %r[u( .msg, Potency, You have%ch[get(%0/_mpoints)]%cn merit points left.)]
+
+    )
+
+
+*/
+##############################################################################
+### Werewolf #################################################################
+
+Werewolf template commands.
+
+/*
+
+*/
+==============================================================================
+=== Command: Skills (Werewolf) ===============================================
+
+SYNTAX
+  skills          --- Show Auspice skills
+  skill <skill>   --- Set Auspice skill
+  skill/clear     --- Clear Auspice skill
+
+/*
+
+&c.skills here=$^\+?skills?(.*)?$:
+
+    @assert [match(getstat(%#/template), Werewolf)]=
+        {@pemit %#=Permission denied.};
+
+    @assert [hasattr(%#,_bio.auspice)]=
+        {@pemit %#=
+            [u( .msg, Chargen, You must have your %chAuspice%cn set first.)]};
+
+    @pemit %#=
+        switch( trim( lcstr( %1 )),
+            ,u( f.list.skills, %# ),
+            /clear,u(f.clear.skill, %#),
+            u( f.process.skill, %#, trim( %1 ))
+        )
+-
+@set here/c.skills=regex
+-
+*/
+-----------------------------------------------------------------------------
+--- f.list.skills -----------------------------------------------------------
+
+0: Enactor (%#)
+
+/*
+
+
+&f.list.skills here=
+
+    [setq( 0,
+        filter( filter.skills, iter( lattr(%va/SKILL*), after( ##, SKILL. )) ,,, %0 )
+    )]
+    [u( .msg,
+        Skills,
+        Your auspice skills are:%b
+            [itemize( iter(%q0, %ch[capitalize(##)]%cn ))]
+    )]
+-
+
+*/
+-----------------------------------------------------------------------------
+--- f.process.skill ---------------------------------------------------------
+
+0: Enactor (%#)
+1: Skill
+
+/*
+
+&f.process.skill here=
+    switch( [not( hasattr( %0. _askill ))]
+            [hastag?( %1, getstat( %0/auspice ))],
+        0?, u( .msg, Skills, You have already selected your %cgAuspice%cn skill.%b
+                Type '%chskill/clear%cn' to clear it.
+            ),
+        10, u( .msg, Skills, That's not a valid %chAuspice%cn skill. ),
+        11, [shiftstat(%0/%1, 1)]%r
+            [set( %0, _askill:[stripansi( statname( %1 ))])]
+            [u( .msg, Skills, Auspice skill set. )]
+
+        )
+-
+
+*/
+-----------------------------------------------------------------------------
+--- f.clear.skill -----------------------------------------------------------
+
+0: Enactor (%#)
+
+/*
+
+
+&f.clear.skill here=
+    if( hasattr( %0, _askill),
+        [shiftstat(%0/[get(%0/_askill)], -1)]%r
+        [set(%0, _askill: )]
+        [u( .msg, Skills, Auspice skill cleared. )],
+        u( .msg, Skills, You don't have an %chAuspice%cn skill set.)
+
+
+    )
+
+-
+
+
+*/
+-----------------------------------------------------------------------------
+--- filter.skills -----------------------------------------------------------
+
+0: Skill
+1: Subject (Player)
+
+/*
+
+
+&filter.skills here= hastag?( %0, getstat( %1/auspice ))
+
+
+*/
+==============================================================================
+=== Command: Renown ==========================================================
+
+SYNTAX:
+    renown <renown>  --- Choose a renown
+    renown/clear     --- Clear renown
+
+0: Desired renown
+
+/*
+
+&c.renown here=$^\+?renown(.*)$:
+
+    @assert [match(getstat(%#/template), Werewolf)] =
+        { @pemit %#= Permission denied. };
+
+    @pemit %#=
+        switch( lcstr( trim( %1 )),
+            /clear,u( f.renown.clear, %# ),
+            u( f.process.renown, %#, trim( %1 ))
+        )
+-
+
+@set here/c.renown=regex
+-
+
+*/
+-----------------------------------------------------------------------------
+--- f.process.renown --------------------------------------------------------
+
+0: Enactor (%#)
+1: Renown
+
+/*
+
+&f.process.renown here=
+    switch( [not(hasattr( %0, _renown ))]
+            [match( statpath( %1 ), RENOWN* )],
+        0?, u( .msg, Renown, You've already chosen your %chRenown%cn.),
+        10, u( .msg, Renown, That's not a valid %chRenown%cn.),
+        11, [shiftstat( %0/%1, 1 )]%r
+            [set(%0, _RENOWN:[stripansi( statname( %1 ))] )]
+            [u( .msg, Renown, Personal %chRenown%cn set. )]
+
+    )
 
 
 
-#/
+&f.process.renown here=
+    switch( [not(hasattr( %0, _renown ))]
+            [match( statpath( %1 ), RENOWN* )],
+        0?, u( .msg, Renown, You've already chosen your %chRenown%cn.),
+        10, u( .msg, Renown, That's not a valid %chRenown%cn.),
+        11, [shiftstat( %0/%1, 1 )]%r
+            [set(%0, _RENOWN:[stripansi( statname( %1 ))] )]
+            [u( .msg, Renown, Personal %chRenown%cn set. )]
+    )
+-
+
+*/
+-----------------------------------------------------------------------------
+--- f.renown.clear ----------------------------------------------------------
+
+0: Enactor (%#)
+
+/*
+
+&f.renown.clear here=
+    switch( hasattr(%0, _renown ),
+        0, u( .msg, Renown, You don't have a personal %chRenown%cn set.),
+        1,  [if(
+                gt( dec( getstat(%0/[get( %0/_renown )])), 0 ),
+                [shiftstat( %0/[get(%0/_renown)], -1 )],
+                [set( %0, _RENOWN.[get(%0/_renown)]:)]
+
+            )]%r
+            [set(%0, _renown: )]
+            [u( .msg, Renown, Done. Personal %chRenown%cn cleared. )]
+
+    )
+-
+*/
+-----------------------------------------------------------------------------
+--- trig.moon.gift ----------------------------------------------------------
+
+0: Target (%#)
+
+/*
+
+&trig.moon.gift here=
+    [setq(0,
+        lmax(
+            iter(
+                lattr(%va/RENOWN*),
+                getstat(%0/[after( ##, .)])
+            )
+        )
+    )]
+    [setq(1,
+        filter(
+            filter.renown,
+            iter(lattr(%va/GIFT.*_MOON'S_GIFT), after( ##, .)),,,
+            %0
+        )
+    )]
+    [set(%0,_GIFT.%q1:[lnum(1,%q0,.)] )];
+    @pemit %0=[u( .msg, Chargen, [statname(%q1)] Set.)];
+-
+
+
+*/
+-----------------------------------------------------------------------------
+--- filter.renown -----------------------------------------------------------
+
+0: Renown
+1: Target
+
+/*
+
+&filter.renown here=
+    hastag?(%0, getstat(%1/auspice))
+-
+
+
+*/
+==============================================================================
+=== Command: Gifts ===========================================================
+
+SYNTAX:
+    gifts
+    gift <gift> = <renown>
+    gift <moon gift>
+    gift/sell <gift> = <renown>
+
+/*
+
+&c.gifts here=$^\+?gifts?(.*)?$:
+
+    @assert [match(getstat(%#/template), Werewolf )]=
+        { @pemit %#=Permission denied. };
+
+    @pemit %#=
+        [switch( strtrunc( %1 ,1 ) ,
+            , u(f.gifts.list, %# ),
+            %b, u( f.gift.buy, %#, %1),
+            /, u(f.gifts.sell, %#, after( %1, /sell )),
+            [u( .msg, Gifts, Unrecognized switch. )]
+        )]
+-
+
+@set here/c.gifts=regex
+-
+*/
+-----------------------------------------------------------------------------
+--- f.gifts.list ------------------------------------------------------------
+
+0: Target (%#)
+q0: Gift list
+
+/*
+
+&f.gifts.list here=
+
+    [setq( 0,
+        filter(
+            filter.gifts,
+            iter(lattr(%va/GIFT.*), after(##, .)),,,
+            %#
+        )
+    )]
+    [lheader(Available Gifts)]%r
+    [wrap(
+        table(
+            iter(sort(%q0),
+                if(
+                    hastag?(##,wolf),
+                    [capitalize(edit( ##, _, %b ))],
+                    %ch%cu[capitalize(edit( ##, _, %b ))]%cn
+                ),,|
+            ),23,76,|
+        ),76,left,%b%b
+    )]%r
+    [footer(You have %ch[default(%0/_gifts, 0 )] facets left )]
+
+-
+
+*/
+-----------------------------------------------------------------------------
+--- f.gift.buy --------------------------------------------------------------
+
+0: Target (%#)
+1: Raw command input
+
+q0: Gift name
+q1: Renown/Cost
+q2: Renown list
+q3: Max target renown
+q4: Auspice gift name
+
+/*
+
+&f.gift.buy here=
+
+    [setq(0, trim(before( %1, = )))]
+    [setq(1, trim(after( %1, = )))]
+    [switch(    [and(
+                    hastag?(%q0, moon ),
+                    hastag?(%q0, getstat( %0/auspice ))
+                )]
+                [or(
+                    and(
+                        hastag?(%q0, shadow ),
+                        hastag?(%q0, getstat( %0/auspice ))
+                    ),
+                    and(
+                        hastag?(%q0, shadow ),
+                        hastag?(%q0, getstat( %0/tribe ))
+                    )
+                )]
+                [hastag?(%q0, wolf )],
+        100,    [setq( 2,
+                    [iter(
+                        lattr( %va/RENOWN.* ),
+                        after( ##, RENOWN. )
+                    )]
+                )]
+                [setq(3, lmax( iter(%q2, getstat( %#/## ))))]
+                [setq(4,
+                    filter(
+                        filter.renown,
+                        iter(lattr(%va/GIFT.*_MOON'S_GIFT), after( ##, .)),,,
+                        %#
+                    )
+                )]
+                [if(
+                    lt( words( getstat( %0/%q4 ), . ), %q3 ),
+                    [setstat(%0/%q4, lnum(1,%q3,.) )]%r
+                    [u( .msg, Gifts, %chMoon%cn gift raised. )],
+                    [u( .msg, Gifts, You can't set your %chMoon%cn gift any higher. )]
+                )],
+        010,    [switch(    [match( statpath(%q1), RENOWN* )]
+                            [gt( getstat( %0/%q1), 0 )]
+                            [gte( dec( get(%#/_gifts )), 0 )],
+                    0??,    u( .msg, Gifts, That's not a valid renown.),
+                    1?0,    u( .msg, Gifts, You don't have any facets left.),
+                    101,    u( .msg, Gifts, You don't have enough renown for that. ),
+                    111,    [if(
+                                neq( match( getstat( %0/%q0 ), Unlock, . ), 0 ),
+                                [setstat(%0/%q0, %q1)]%r,
+                                [setstat(%0/%q0, unlock)]%r
+                                [setstat(%0/%q0, %q1)]%r
+                            )]
+                            [u( .msg, Gifts, Gift purchased.)]
+                            [set(%0, _gifts:[dec(get(%0/_gifts))] )]
+                )],
+        001,    [setq( 2,
+                    [iter(
+                        lattr( %va/RENOWN.* ),
+                        after( ##, RENOWN. )
+                    )]
+                )]
+                [setq(3, lmax( iter(%q2, getstat( %#/## ))))]
+                [setq(4,
+                    filter(
+                        filter.renown,
+                        iter(lattr(%va/GIFT.*_MOON'S_GIFT), after( ##, .)),,,
+                        %#
+                    )
+                )]
+                [switch(    [lt( words( getstat( %0/%q4 ), . ), %q3 )]
+                            [and(
+                                [match( statpath(%q1), RENOWN* )],
+                                [gt( getstat( %0/%q1), 0 )]
+                            )],
+                    0?,     u( .msg, Gifts, You don't have enough renown to do that. ),
+                    10,     u( .msg, Gifts, You don't have that renown. ),
+                    11,     [setstat(%0/%q0, %q1)]%r
+                            [u( .msg, Gifts, Moon gift set.)]
+                )]
+    )]
+
+-
+
+*/
+-----------------------------------------------------------------------------
+--- f.gifts.sell ------------------------------------------------------------
+
+0: Target (%#)
+1: Raw command input
+
+q0: Gift name
+q1: Renown/Cost
+q2: Renown list
+q3: Max target renown
+q4: Auspice gift name
+
+/*
+
+&f.gifts.sell here=
+
+    [setq(0, trim(before( %1, = )))]
+    [setq(1, trim(after( %1, = )))]
+    [switch(    [and(
+                    hastag?(%q0, moon ),
+                    hastag?(%q0, getstat( %0/auspice ))
+                )]
+                [or(
+                    and(
+                        hastag?(%q0, shadow ),
+                        hastag?(%q0, getstat( %0/auspice ))
+                    ),
+                    and(
+                        hastag?(%q0, shadow ),
+                        hastag?(%q0, getstat( %0/tribe ))
+                    )
+                )]
+                [hastag?(%q0, wolf )],
+        100,    [setq( 2,
+                    [iter(
+                        lattr( %va/RENOWN.* ),
+                        after( ##, RENOWN. )
+                    )]
+                )]
+                [setq(3, lmax( iter(%q2, getstat( %#/## ))))]
+                [setq(4,
+                    filter(
+                        filter.renown,
+                        iter(lattr(%va/GIFT.*_MOON'S_GIFT), after( ##, .)),,,
+                        %#
+                    )
+                )]
+                [if(
+                    gt( words( getstat( %0/%q4 ), . ), %q3 ),
+                    [set(%0, _GIFT.%q4:[lnum(1, dec(words(getstat(%0/%q4),.)), . )])]
+                    [u( .msg, Gifts, [statname(%q3)] sold. )],
+                    [u( .msg, Gifts, You can't lower your %chMoon%cn gift any further. )]
+                )],
+        010,    [switch(    [match( statpath(%q1), RENOWN* )]
+                            [lte( inc( get(%#/_gifts )), 2 )],
+                    0?,    u( .msg, Gifts, That's not a valid renown.),
+                    ?0,    u( .msg, Gifts, You don't have any more facets to sell.),
+                    11,    [if(
+                                match(getstat(%0/%q0),[capitalize(%q1)],.),
+                                [if(
+                                    match( setdiff(getstat(%0/%q0),[capitalize(%q1)],.), Unlock),
+                                    [set(%0,_[statpath(%q0)]: )]
+                                    [u( .msg, Gifts, Gift [statname(%q0)] facet [statname(%q1)] sold.)]
+                                    [set(%0, _gifts:[inc(get(%0/_gifts))] )],
+                                    [set(
+                                    %0,
+                                    _[statpath(%q0)]:
+                                    [setdiff( getstat(%0/%q0), [capitalize(%q1)], . )]
+                                    [set(%0, _gifts:[inc(get(%0/_gifts))] )]
+                                )]
+                                [u( .msg, Gifts, Gift [statname(%q1)] facet [statname(%q1)] sold.)]
+                                )],
+                                [u( .msg, Gifts, You don't have that facet for [statname(%q0)])]
+
+                            )]
+                )],
+        001,    [setq( 2,
+                    [iter(
+                        lattr( %va/RENOWN.* ),
+                        after( ##, RENOWN. )
+                    )]
+                )]
+                [setq(3, lmax( iter(%q2, getstat( %#/## ))))]
+                [setq(4,
+                    filter(
+                        filter.renown,
+                        iter(lattr(%va/GIFT.*_MOON'S_GIFT), after( ##, .)),,,
+                        %#
+                    )
+                )]
+                [switch(    [match( statpath(%q1), RENOWN* )],
+                     0,     u( .msg, Gifts, You don't have that renown. ),
+                     1,     [set(
+                                %0,
+                                _[statpath(%q0)]:
+                                [setdiff(getstat(%0/%q0),[stripansi(statname(%q1))], .)]
+                            )]
+                            [u( .msg, Gifts, [statname(%q0)] facet [statname(%q1)] removed.)]
+                )],
+                [u( .msg, Gifts, I can't find that gift.)]
+    )]
+-
+
+*/
+-----------------------------------------------------------------------------
+--- filter.gifts ------------------------------------------------------------
+
+0: Gift
+1: Target (%#)
+
+/*
+
+
+&filter.gifts here=
+    or(
+        and(
+            hastag?(%0,[getstat(%1/tribe)]),
+            hastag?(%0,shadow)
+        ),
+        and(
+            hastag?(%0,[getstat(%1/auspice)]),
+            hastag?(%0,shadow)
+        ),
+        hastag?(%0, wolf ),
+    )
+
+-
+
+*/
+==============================================================================
+=== Command: Primal Urge (Werewolf) ==========================================
+
+SYNTAX:
+    Primal/buy
+    Primal/sell
+
+Buying a point of primal urge costs 5 merit points.  Primal Urge can't be raised
+above 3 at chargen.
+
+/*
+
+&c.primal here=$^\+?primal(.*)$:
+
+    @assert match(getstat(%#/template), Werewolf) =
+    {
+        @pemit %#=Permission denied.
+    };
+
+## Find the command entry point
+
+    @switch [match( lcstr( %1 ), /buy )]
+            [match( lcstr( %1 ), /sell )]=
+    10, {@pemit %#=[u( f.primal.buy, %# )]},
+    01, {@pemit %#=[u( f.primal.sell, %# )]},
+        {@pemit %#=u( .msg, Primal Urge, Unknown switch.)}
+-
+@set here/c.primal=regex
+-
+*/
+-----------------------------------------------------------------------------
+--- f.primal.buy -----------------------------------------------------------
+
+0: Target player object.
+
+/*
+
+&f.primal.buy here=
+        switch( [match( getstat( %0/template ), Werewolf )]
+                [gte( sub( get(%0/_mpoints ), 5 ), 0 )]
+                [lte( inc( getstat( %0/Primal Urge )), 3 )],
+            0??, Permission denied.,
+            10?, u( .msg, Primal Urge, You don't have enough merit points left. ),
+            110, u( .msg, Primal Urge, You can't raise your %chPrimal Urge%cn above %ch3%cn),
+            111, [setstat( %0/primal urge, inc( getstat( %0/primal urge )))]
+                    [set( %0,_mpoints: [sub( get(%0/_mpoints), 5 )])]
+                    %r[u( .msg, Primal Urge, You have%ch[get(%0/_mpoints)]%cn merit points left.)]
+        )
+
+*/
+-----------------------------------------------------------------------------
+--- f.Primal.sell -----------------------------------------------------------
+/*
+
+&f.primal.sell here=
+    switch( [match( getstat( %0/template ), Werewolf )]
+            [gte( dec( getstat( %0/primal urge )), 1 )],
+        0?, Permission Denied.,
+        10, u( .msg, Primal Urge, You can't lower your %chPrimal Urge%cn any further.),
+        11, [setstat( %0/primal urge, dec( getstat( %0/primal urge )))]
+            [set( %0,_mpoints: [add( get(%0/_mpoints), 5 )])]
+                %r[u( .msg, Primal Urge, You have%ch[get(%0/_mpoints)]%cn merit points left.)]
+
+    )
+
+-
+
+*/
+=============================================================================
+=== Command: Rites (Werewolf / Vampire) =====================================
+
+SYNTAX
+    rites
+    rite/buy <rite>
+    rite/sell <rite>
+    rites/trade <merit points>
+    rites/reset
+
+
+/*
+
+&c.rites here=$^\+?rites?(.*)?$:
+
+    @assert [match( getstat(%#/template), Werewolf )]=
+        { @pemit %#=Permission denied. };
+
+@pemit %#=
+
+    switch(     after( first( lcstr(trim( %1 ))), /),
+        ,       u( f.rites.list, %# ),
+        buy,    u( f.rites.buy, %#, rest(trim( %1 ))),
+        sell,   u( f.rites.sell, %#, rest(trim( %1 ))),
+        trade,  u( f.rites.trade, %#, rest(trim( %1 ))),
+        reset,  u( f.rites.reset, %# ),
+                u( .msg, Rites, Unrecognized switch. )
+    )
+-
+
+@set here/c.rites=regex
+-
+
+&f.rites.list here=
+    [setq(0, iter(lattr(%va/RITE*), after( ##, . )))]
+    [setq(1, filter( filter.rites, %q0,,,%# ))]
+    [lheader(Available Rites)]%r
+    [wrap(
+        [table(
+            iter(
+                sort( %q1 ),
+                [ljust(%ch[capitalize(edit(##,_,%b))]%cn,22,%ch%cx.%cn)]
+                %ch[get(%va/RITE.##)]%cn
+                ,,|
+            ),24,76,|
+        )],76,left,%b%b
+    )]%r
+    [footer(You have [get(%0/_rites)] rites left)]
+-
+
+&f.rites.buy here=
+    [setq(0, iter(lattr(%va/RITE*), after( ##, . )))]
+    [setq(1, filter( filter.rites, %q0,,,%# ))]
+    [setq(2, get(%va/RITE.[capstr( edit( %1, %b, _ ))]) )]
+    [switch(    [neq(match( %q1, [capstr( edit( %1, %b, _ ))]),0)]
+                [lte(%q2, get(%0/_rites ))]
+                [not(getstat(%0/%1))],
+        0??,    u( .msg, Rites, You don't have access to that %chRite%cn. ),
+        10?,    u( .msg, Rites, You don't have enough %chRite%cn points left. ),
+        1?0,    u( .msg, Rites, You already have that %chRite%cn.),
+        111,    [setstat(%0/%1, %q2)]%r
+                [set(%0, _rites:[sub(get(%0/_rites),%q2)])]
+                [u( .msg, Rites, You have %ch[get(%0/_rites)]%cn Rite points left. )]
+    )]
+
+-
+
+&f.rites.sell here=
+    [setq(0, iter(lattr(%va/RITE*), after( ##, . )))]
+    [setq(1, filter( filter.rites, %q0,,,%# ))]
+    [setq(2, get(%va/RITE.[capstr( edit( %1, %b, _ ))]) )]
+    [if(
+        [hasattr(%0, _[statpath(%1)])],
+        [set(%0, _[statpath(%1)]: )]
+        [set(%0, _RITES:[add(get(%0/_rites), %q2)] )]
+        [u( .msg, Rites, Rite [statname(%1)] sold.  You have %ch[get(%0/_rites)]%cn points left. )],
+        [u( .msg, Rites, You don't have that %chRite%cn. )]
+
+    )]
+-
+
+&f.rites.trade here=
+    [if(
+        and(
+            lte(add(get(%0/_trites),%1),5),
+            gte(sub(get(%0/_mpoints),%1),0)
+        ),
+        [set(%0, _trites:[add(get(%0/_trites),%1)] )]
+        [set(%0, _rites:[add(get(%0/_rites),%1 )])]
+        [set(%0, _mpoints:[sub(get(%0/_mpoints),%1 )])]
+        [u( .msg, Rites, %ch%1%cn Merit points traded for %ch%1%cn Rite points.)]%r
+        [u( .msg, Rites, You have traded %ch[get(%0/_trites)]%cn merit points total. )],
+        [u( .msg, Rites, You can't trade that many merit points. )]
+    )]
+
+-
+&f.rites.reset here=
+    [iter(
+        lattr(%0/_RITE.*),
+        set(%0, ##: )
+    )]
+    [set(%0, _mpoints:[add(get(%0/_trites),get(%0/_mpoints))])]
+    [set(%0, _rites:2)]
+    [set(%0, _trites: )]
+    [u( .msg, Rites, Rites reset.)]
+
+-
+&filter.rites here =
+    and(
+        udefault(%va/prerequisite.rite.%0,1,%1 ),
+        hastag?(%0, getstat(%1/template))
+    )
+
+*/
 ------------------------------------------------------------------------------
 --- .msg ---------------------------------------------------------------------
-/#
+
+0: Message
+
+/*
 
 &.msg here= ansi( h, <%0>, n, %b%1 )
+
+*/
+===============================================================================
+=== Command: Restart ==========================================================
+
+/*
+
+&c.restart here=$^\+?restart$:
+
+    @trigger %!/restart.[getstat(%#/template)]=%#;
+-
+
+@set here/c.restart=regex
+-
+
+&restart.vampire here=
+    [setstat(%0/blood potency, 1)]
+    [shiftstat(%0/[get(%0/_attr)], -1)];
+    &_dpoints %0=3;
+    &_mpoints %0=10;
+    &_attr %0=;
+    @dolist lattr(%0/_DISCIPLINE.*) = { &## %#=; };
+    @dolist lattr(%0/_RITES.*) = { &## %#=; };
+    @dolist lattr(%0/_MIRACLE.*) = { &## %#=; };
+    @pemit %#=[u( .msg, Chargen, Template reset.)]
+
+-
+
+&restart.werewolf here=
+    @fo %0=renown/clear;
+    @fo %0=rites/reset;
+    @dolist lattr(%0/_GIFT.*)={&## %0=;};
+    @dolist lattr(%0/_RITE.*)={&## %0=;};
+    [setq(0,
+        filter(
+            filter.renown,
+            iter(lattr(%va/GIFT.*_MOON'S_GIFT), after( ##, .)),,,
+            %0
+        )
+    )];
+    [setstat( %0/language(first Tongue), 1)];
+    [setstat( %0/totem, 1)];
+    [setstat(%0/primal urge, 1)];
+    [setstat(%0/%q0, 1)];
+    &_gifts %0=2;
+    &_mpoints %0=10;
+    @wait .2=@pemit %0=[u( .msg, Chargen, Character generation step reset. )]

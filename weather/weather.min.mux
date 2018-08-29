@@ -1,12 +1,16 @@
-@@
-@@ Weather.min.mux
-@@ https://github.com/lcanady/CrescentMoonMux
-@@
-
+think %ch<Mux Weather>%cn Initializing setup.
 @create Weather System <WS>
-@set  Weather System <WS>=inherit safe
+@set Weather System <WS>=inherit safe
 @fo me=&d.ws me=search( name=Weather System <WS> )
-&c.weather [v( d.ws )]=$^\+?weather$:@pemit %#=[lheader(Current Weather Conditions)]%r[ljust(%b%b%chCurrent Conditions:%cn,38)][u( f.get-field, conditions, conditions )]%r[ljust(%b%b%chTemperature:%cn,38)][u( f.get-field, conditions, temperature )]%r[ljust(%b%b%chWind:%cn,38)][u( f.get-field, conditions, wind )]%r[ljust(%b%b%chAtmospheric Pressure:%cn,38)][u( f.get-field, conditions, pressure )]%r[ljust(%b%b%chVisibility:%cn,38)][u( f.get-field, conditions, visibility )]%r[ljust(%b%b%chHumidity:%cn,38)][u( f.get-field, conditions, humidity )]%r[ljust(%b%b%chSunrise:%cn,38)][timefmt($H:$M ,u( f.get-field, conditions, sunrise ))]%r[ljust(%b%b%chSunset:%cn,38)][timefmt($H:$M ,u( f.get-field, conditions, sunset ))]%r[ljust(%b%b%chMoon Phase:%cn,38)][u( f.get-field, conditions, moon_phase )][if(u( f.is-moon-visible? ),%b<%chVisibile%cn>,%b<Not Visible>)]%r[footer(CURRENT TIME: [time()])]
-&f.get-field [v( d.ws )]=strcat(null( regmatchi( textfile( meteo, %0 ), %1: .+, 0 )),trim( rest( %q0, : )))
-&.between [v( d.ws )]=cand(gte( %2, min( %0, %1 )),lte( %2, max( %0, %1 )))
-&f.is-moon-visible? [v( d.ws )]=u( .between,secs(),u( f.get-field, conditions, moonrise ),u( f.get-field, conditions, moonset ))
+@wait .1=think @@(null)
+&c.weather [v( d.ws )]=$^\+?weather$: @pemit %#= [u( .header, Current Weather Conditions )]%r[ljust(%b%b%chCurrent Conditions:%cn,38)][u( f.get-field, conditions, conditions )]%r[ljust(%b%b%chTemperature:%cn,38)][u( f.get-field, conditions, temperature )]%r[ljust(%b%b%chWind:%cn,38)][u( f.get-field, conditions, wind )]%r[ljust(%b%b%chAtmospheric Pressure:%cn,38)][u( f.get-field, conditions, pressure )]%r[ljust(%b%b%chVisibility:%cn,38)][u( f.get-field, conditions, visibility )]%r[ljust(%b%b%chHumidity:%cn,38)][u( f.get-field, conditions, humidity )]%r[ljust(%b%b%chSunrise:%cn,38)][u( f.get-field, conditions, sunrise )]%r[ljust(%b%b%chSunset:%cn,38)][u( f.get-field, conditions, sunset )]%r[ljust(%b%b%chMoon Phase:%cn,38)][u( f.get-field, conditions, moon_phase )] [if( u( f.is-moon-visible? ), [ansi(h, <, hc, Visibile, h, >)], [ansi(hx,<Not Visible>)] )]%r[ u( .footer, CURRENT TIME: [time()] )]
+@set [v( d.ws )]/c.weather=regex
+&f.get-field [v( d.ws )]= strcat( null( regmatchi( textfile( meteo, %0 ), %1: .+, 0 )), trim( rest( %q0, : )) )
+&f.moon.epoch.seconds [v( d.ws )]= [setq(z, after(u(f.get-field,conditions,moonrise),|))] [convtime( [timefmt($a $b $d $Y )]%b[before(u(f.get-field,conditions,moonrise),|)]:00%b[mid(%qz,0,1)] [rjust( [after( %qz, mid(%qz,0,1) )],3,0 )]00 )]| [convtime( [timefmt($a $b $d $Y, add( secs(), 86400 ) )]%b[before(u(f.get-field,conditions,moonset),|)]:00%b[mid(%qz,0,1)] [rjust( [after( %qz, mid(%qz,0,1) )],3,0 )]00 )]
+&f.is-moon-visible? [v( d.ws )]= [setq( a, secs() )] [and( gte( %qa, before( u( f.moon.epoch.seconds ), | )), lte( %qa, after( u( f.moon.epoch.seconds ), | )) )]
+&.header [v( d.ws )] = strcat( ansi( r, ---, n ), ljust( ansi( hr, <<, h,%b%0%b, hr, >>, n ), sub( 78, 3 ), ansi(r, -, n ) ) )
+&.footer [v(d.ws)] = strcat( rjust( if( %0, ansi( hr, <<, h,%b%0%b, hr, >>, n )), sub( 78, 3 ), ansi(r, -, n ) ), ansi( r, ---, n ) )
+@fo me= @tel [v(d.ws)] = [config(master_room)];
+&d.ws me=;
+@fo me=weather;
+think %ch<Mux Weather>%cn Setup complete!

@@ -1,9 +1,17 @@
-#/
+*/
 #############################################################################
 ### Mux Weather System ######################################################
 
+This is a gloal weather system, powered by a python script to gather data
+from Yahoo weather, Google Timezones and the USNO Atrological APIs to gather
+current conditions.  See README.txt in the folder for instructions on how
+to install the entire system.  Based on a system originally created by
+Brus, and Thenomian.
 
-OUTPUT:
+* In order to install this code, you will need Wizard access to the server
+  and access to the games .config files.
+
+OUTPUT (Weather):
 
 ---<< Current Weather Conditions >>-------------------------------------------
   Current Conditions:                  ###############
@@ -12,62 +20,84 @@ OUTPUT:
   Atmospheric Pressure:                ###############
   Visibility:                          ###############
   Humidity:                            ###############
-
   Sunrise:                             ###############
   Sunset:                              ###############
-  Moon Phase:                          ###############
--------------------------------<< CURRENT TIME: Mon Aug 20 13:43:26 2018 >>---
+  Moon Phase:                          ############### <[Not] Visible>
+-------------------------------<< CURRENT TIME: ### ### ## ##:##:## #### >>---
 
-#/
+
 =============================================================================
 === SETUP ===================================================================
-/#
+
+Commands needed for the self installer script.
+
+/*
+
+think %ch<Mux Weather>%cn Initializing setup.
+-
 
 @create Weather System <WS>
-@set  Weather System <WS>=inherit safe
-@fo me=&d.ws me=search( name=Weather System <WS> )
+-
 
-#/
+@set  Weather System <WS>=inherit safe
+-
+
+@fo me=&d.ws me=search( name=Weather System <WS> )
+-
+
+// Give the game long enough to catch up from the search()
+
+@wait .1=think @@(null)
+-
+
+*/
 =============================================================================
 === Command: Weather ========================================================
-/#
+
+SYNTAX:
+  (+)weather
+
+  Pulls up the 'current' weather information from the meteo help file that's
+  updated every hour.
+
+/*
 
 &c.weather [v( d.ws )]=$^\+?weather$:
     @pemit %#=
-        [lheader(Current Weather Conditions)]
+        [u( .header, Current Weather Conditions )]
         %r[ljust(%b%b%chCurrent Conditions:%cn,38)][u( f.get-field, conditions, conditions )]
         %r[ljust(%b%b%chTemperature:%cn,38)][u( f.get-field, conditions, temperature )]
         %r[ljust(%b%b%chWind:%cn,38)][u( f.get-field, conditions, wind )]
         %r[ljust(%b%b%chAtmospheric Pressure:%cn,38)][u( f.get-field, conditions, pressure )]
         %r[ljust(%b%b%chVisibility:%cn,38)][u( f.get-field, conditions, visibility )]
         %r[ljust(%b%b%chHumidity:%cn,38)][u( f.get-field, conditions, humidity )]
-        %r[ljust(%b%b%chSunrise:%cn,38)][timefmt($H:$M ,u( f.get-field, conditions, sunrise ))]
-        %r[ljust(%b%b%chSunset:%cn,38)][timefmt($H:$M ,u( f.get-field, conditions, sunset ))]
+        %r[ljust(%b%b%chSunrise:%cn,38)][u( f.get-field, conditions, sunrise )]
+        %r[ljust(%b%b%chSunset:%cn,38)][u( f.get-field, conditions, sunset )]
         %r[ljust(%b%b%chMoon Phase:%cn,38)][u( f.get-field, conditions, moon_phase )]
         [if(
             u( f.is-moon-visible? ),
-            %b<%chVisibile%cn>,
-            %b<Not Visible>
+            [ansi(h, <, hc, Visibile, h, >)],
+            [ansi(hx,<Not Visible>)]
         )]
-        %r[footer(CURRENT TIME: [time()])]
+        %r[ u( .footer, CURRENT TIME: [time()] )]
+-
+@set [v( d.ws )]/c.weather=regex
+-
 
-
-
-#/
+*/
 ============================================================================
 === FUNCTIONS ==============================================================
-/#
 
-#/
 -----------------------------------------------------------------------------
 --- f.get-field -------------------------------------------------------------
 
 0: Which 'help' file? (conditions)
 1: Which 'field' (temperature)
 
-Thenomian's code
+Thenomian's code.  Pulls data from the meteo help file to populate the
+weather system.
 
-/#
+/*
 
 &f.get-field [v( d.ws )]=
     strcat(
@@ -75,35 +105,128 @@ Thenomian's code
         trim( rest( %q0, : ))
     )
 -
-#/
--------------------------------------------------------------------------------
--- Between --------------------------------------------------------------------
 
-    u( .between, <value>, <num1>, <num2> )
+*/
+-----------------------------------------------------------------------------
+--- Moon Epoch Seconds ------------------------------------------------------
 
-Is y <= a <= x?
-That is: Is 'a' between x and y, including x or y?
+Build proper date strings for convsecs() to process.
 
-Also written by Thenomian!
+Side Note:
+  My math for calculating proper timezone strings is kind of messed up, and
+  probably won't translate to everywhere as is.  Note to self for a future
+  re-write - unless someon else is interested!
 
-/#
+returns:
+  <moonrise seconds>|<moonset seconds>
 
-&.between [v( d.ws )]=
-    cand(
-        gte( %2, min( %0, %1 )),
-        lte( %2, max( %0, %1 ))
-    )
+qz: UTC Timezone
 
-#/
+/*
+
+&f.moon.epoch.seconds [v( d.ws )]=
+
+  [setq(z, after(u(f.get-field,conditions,moonrise),|))]
+
+// Build and convert Moonrise string
+  [convtime(
+    [timefmt($a $b $d $Y )]%b
+    [before(u(f.get-field,conditions,moonrise),|)]:00%b
+    [mid(%qz,0,1)]
+    [rjust(
+      [after(
+        %qz,
+        mid(%qz,0,1)
+      )],3,0
+    )]00
+  )]|
+
+// Build and convert moonset string
+  [convtime(
+    [timefmt($a $b $d $Y, add( secs(), 86400 ) )]%b
+    [before(u(f.get-field,conditions,moonset),|)]:00%b
+    [mid(%qz,0,1)]
+    [rjust(
+      [after(
+        %qz,
+        mid(%qz,0,1)
+      )],3,0
+    )]00
+  )]
+-
+
+*/
 -----------------------------------------------------------------------------
 --- f.is-moon-visible? ------------------------------------------------------
 
 Checks to see if it's between moonrise and moonset.
 
-/#
+/*
+
 &f.is-moon-visible? [v( d.ws )]=
-    u( .between,
-        secs(),
-        u( f.get-field, conditions, moonrise ),
-        u( f.get-field, conditions, moonset )
+    [setq( a, secs() )]
+    [and(
+      gte( %qa, before( u( f.moon.epoch.seconds ), | )),
+      lte( %qa, after( u( f.moon.epoch.seconds ), | ))
+    )]
+-
+
+*/
+-----------------------------------------------------------------------------
+--- .header -----------------------------------------------------------------
+
+0: Text
+
+/*
+
+&.header [v( d.ws )] =
+    strcat(
+        ansi( r, ---, n ),
+        ljust(
+            ansi( hr, <<, h, %b%0%b, hr, >>, n ),
+            sub( 78, 3 ),
+            ansi(r, -, n )
+        )
     )
+-
+
+*/
+-----------------------------------------------------------------------------
+--- .footer -----------------------------------------------------------------
+
+0: Text
+
+/*
+
+&.footer [v(d.ws)] =
+    strcat(
+        rjust(
+            if( %0, ansi( hr, <<, h, %b%0%b, hr, >>, n )),
+            sub( 78, 3 ),
+            ansi(r, -, n )
+        ),
+        ansi( r, ---, n )
+    )
+-
+
+
+*/
+=============================================================================
+=== Wrap Up/Clean Up ========================================================
+
+Send the weather system object to the master room and clear setup
+attributes. For the self installer script.
+
+/*
+
+@fo me= @tel [v(d.ws)] = [config(master_room)];
+-
+&d.ws me=;
+-
+@fo me=weather;
+-
+think %ch<Mux Weather>%cn Setup complete!
+-
+
+
+
