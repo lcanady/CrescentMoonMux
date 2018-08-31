@@ -27,9 +27,16 @@ Requirements:
 */
 
 @dig Global Room Parent <GRP>
+-
 @fo me=&d.grp=[search( name=Global Room Parent <GRP> )]
-@set [v( d.grp )]=safe floating halt
+-
 
+// Delay to allow for search() to catch up
+
+@wait .1=@@
+-
+@set [v( d.grp )]=safe floating halt
+-
 /*
 --------------------------------------------------------------------------------
 --- configuration --------------------------------------------------------------
@@ -41,16 +48,24 @@ These are the settings to change the basic apperance of your Global Room Parent
 // .header related config settings for @conformat & @exitformat
 
 &config.color     [v( d.grp )]= r
+-
 &config.hcolor    [v( d.grp )]= hr
+-
 &config.text      [v( d.grp )]= h
+-
 &config.filler    [v( d.grp )]= -
+-
 &config.lsep      [v( d.grp )]= <<
+-
 &config.rsep      [v( d.grp )]= >>
+-
 
 // Color configuration for exits with &secondary or &tertiary attributes
 
 &config.secondary [v( d.grp )] = c
+-
 &config.tertiary  [v( d.grp )] = m
+-
 
 /*
 --------------------------------------------------------------------------------
@@ -69,7 +84,7 @@ the owner of the room can see the dbref and flags list.
                 %([num( me )][flags( %! )]%)
             )]
      )
-
+-
 
 /*
 --------------------------------------------------------------------------------
@@ -98,6 +113,7 @@ Room contents are split up into two parts, players and things.
             )
         )],%b
     )]
+-
 
 /*
 --------------------------------------------------------------------------------
@@ -129,7 +145,7 @@ Exits can have two optional attributes:
             iter( %0,
                 switch( 1,
 
-## Find exits with the &secondary attribute
+// Find exits with the &secondary attribute
 
                     issecondary( ## ),
                         edit(
@@ -138,7 +154,7 @@ Exits can have two optional attributes:
                             >, ansi( v( config.secondary ), > )
                         ),
 
-## Find exits with the &tertiary attribute
+// Find exits with the &tertiary attribute
 
                     istertiary( ## ),
                         edit(
@@ -158,13 +174,13 @@ Exits can have two optional attributes:
     )]
     [if(
 
-## IC Area?
+// IC Area?
 
         not( hasflag( %!, IC )),
         footer( OOC AREA ),
         footer()
     )]
-
+-
 
 /*
 --------------------------------------------------------------------------------
@@ -184,7 +200,7 @@ filter( filter.players, %0 )
         not( hasflag( %0, dark )),
         hasflag(%0, connected )
     )
-
+-
 
 /*
 --------------------------------------------------------------------------------
@@ -203,6 +219,7 @@ filter( filter.objects, %0 )
         hastype( %0, thing ),
         not( hasflag( %0, dark ))
     )
+-
 
 /*
 --------------------------------------------------------------------------------
@@ -232,7 +249,7 @@ Shows a formatted header for @conformat and @exitformat
             ansi( v( config.color ), v( config.filler ), n )
         )
     )
-
+-
 
 /*
 --------------------------------------------------------------------------------
@@ -249,6 +266,7 @@ also show the dbref of a player.
 &format.moniker [v( d.grp )]=
         [moniker( %0 )][if( orflags( %#, wWZ ), %(%0%) )]
 
+-
 
 /*
 --------------------------------------------------------------------------------
