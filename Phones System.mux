@@ -1,0 +1,855 @@
+#system      Phone System Global Object
+#author      Lemuel Canady, Jr
+#url         github.com/lcanady/crescentmoonmux
+#written_for TinyMUX 2.12
+
+/*
+##########################################################################
+### Phone Code Global Object #############################################
+
+Things it needs to do (Objectives):
+	
+	* Make/receive/answer/deny/VM calls
+	* Make/receive/answer texts
+	* Have a phone book
+	* Have support for ‘burner’ numbers
+	* Have local ‘flavor’.
+	* Integrate with website
+
+
+Player Commands
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*Numbers
+  +phone/new - Get a new number associated with your character. More than one.
+  +phone/delete <#> - Kill a number.
+  +phone - list your currently used(listed?) number
+  +phone/numbers - List all of your numbers + aliases
+  +phone/register <number> - Set this as your default ‘listed’ number.
+  +phone/unregister - In case you change your mind, or get a new number.
+  +phone/alias <number>=<name> - Set a new ‘nickname’ for a number.
+
+*Voic
+  +phone/dial [<alias or #>=]<# or Address book entry, or Name if registered>
+  +phone/answer 
+  +phone/deny  - Straight to voice @mail, or SQL DBmail for web check?
+  +phone/hangup
+  +phone/contacts - Contact list 
+
+*Text
+  +phone/list [<status: new|read|deleted|etc>]
+  +phone/read <#>
+  +phone/message <#/A/N> = <message>
+  +phone/delete <#> - delete from view, but keep in the db.
+
+*options
+  +phone/mode <silent|vibrate|normal> - What kind of message to emit?
+  +phone/add <Name> = <Number>
+  
+
+Staff Commands
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++phone <name> - shows all of the numbers/aliases list for the player.
++phone/contacts <name>
+
+-----------------------------------------------------------------------------
+                                SQL TABLES
+-----------------------------------------------------------------------------
+
+You'll neeed to go into the database you're using for your game and enter
+the following SQL Statements:
+
+CREATE TABLE `number_database` (
+	`ID` int NOT NULL AUTO_INCREMENT,
+	`dbref` TEXT NOT NULL,
+	`number` TEXT NOT NULL,
+	`active` int NOT NULL DEFAULT '1',
+	PRIMARY KEY (`ID`)
+);
+
+CREATE TABLE `message_database` (
+	`MessID` int NOT NULL AUTO_INCREMENT,
+	`NumID` int NOT NULL AUTO_INCREMENT UNIQUE,
+	`Date` DATE NOT NULL AUTO_INCREMENT DEFAULT 'CURRENT_DATE()',
+	`Status` TEXT NOT NULL DEFAULT 'unread',
+	`message` TEXT NOT NULL UNIQUE,
+	PRIMARY KEY (`MessID`)
+);
+
+ALTER TABLE `message_database` ADD CONSTRAINT `message_database_fk0` 
+FOREIGN KEY (`NumID`) REFERENCES `number_database`(`ID`);
+
+
+
+
+
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+*/
+
+
+
+/*
+=============================================================================
+=== DATA ====================================================================
+
+Global data variables
+
+*/
+
+
+//--- PHONE NUMBERS ---------------------------------------------------------
+
+// local area codes
+&d.areacode #248 = 504
+-
+
+// a couple of random prefixes
+&d.prefix #248 = 201 205 213 214 250 251
+-
+
+// Technically a function, but more like calculated data really.
+&d.randomfour #248 = 
+	
+	[rand( 1, 9 )]
+	[rand( 1, 9 )]
+	[rand( 1, 9 )]
+	[rand( 1, 9 )]
+-
+
+// Expression to change the way numbers are displayed  from the default 
+// 999-999-9999 format
+// 0: Area Code
+// 1: Prefix 
+// 2: Device code
+
+&d.numformat #248= (%0)%1-%2
+
+
+//--- HEADER & FOOTER SETTINGS ----------------------------------------------
+
+
+// Title color
+&d.titlecolor #248= %ch
+-
+
+// left Seperator
+&d.l_sep #248 = %ch%cr<<%cn
+-
+
+// Right Seperator
+&d.r_sep #248 = %ch%cr>>%cn
+-
+
+// Filler Characters
+&d.padding #248 = %cr-%cn
+
+-
+
+//--- APPROVAL HOOK ---------------------------------------------------------
+// This is a udefaulted check for a games integrated approval system.  For
+// instance using Thenomian's GMCCG code you could have your code read
+// something like:  &.canuse [v(d.ps)] = hasflag(%0,approved)
+
+
+&.canuse #248 = 1
+
+
+/*
+=============================================================================
+=== Master Command: Phones ==================================================
+
+This is one central command that runs the majority of the system.  All
+switches are evaluated through here, and sent to functions for processing.
+
+Comprised of several sub-commands and switches:
+
+c.phone.general
+c.phone.switch
+	* switch.numbers
+	* switch.new
+	* switch.delete
+	* switch.register
+	* switch.unregister
+	* switch.alias
+	* switch.dial
+
+*/
+
+&c.phones #248 = $^\+?phones?(.*)?$:
+
+// Check to make sure the Enactor is approved to use the phone system	
+	@assert u( .canuse, %# ) = 
+	{
+		@pemit %#= [u( .msg, Phone, You are not authorized to use 
+						this command. )]
+	};
+	
+// Make sure the SQL Database is up and running
+	
+
+	@pemit %#=
+		[switch( strtrunc( lcstr( %1 ) , 1 ),
+			null(null), u( c.phone.general, %# ),
+			/,	u( c.phone.switch, %#, after( %1, / )),
+				u( .msg, Phone, Invalid switch. 
+					Valid switches are:%b[itemize(%qm)]. )
+		)]
+		
+-
+
+// Set the command to allow regular expressions
+@set #248/c.phones = regex
+-
+
+/*
+-----------------------------------------------------------------------------
+--- c.phone.general ---------------------------------------------------------
+
+0: Enactor (%#)
+
+
+*/
+
+&c.phone.general #248 =
+	[if(
+		hasattr( %#, _r_number ),
+		u( .msg, Phones, Your listed number is: %ch[get(%#/_r_number)]%cn ),
+		u( .msg, Phones, You don't have a listed number. )
+	)]
+
+-
+
+
+
+/*
+-----------------------------------------------------------------------------
+--- c.phone.switch ----------------------------------------------------------
+
+0: Enactor (%#)
+1: Switch Statement
+f: First switch element
+s: Second switch element
+	( /element 1)( element2 )
+
+*/
+
+&c.phone.switch #248 = 
+
+// Set registers
+	[setq(f, first( %1 ))]
+	[setq(s, rest( %1 ))]
+	[setq(m, iter( lattr( %!/switch.* ), %ch/[lcstr( after( ##,.))]%cn) )]
+	
+	[switch( lcstr(%qf),
+		new,		u( switch.new, %0 ),
+		numbers,	u( switch.numbers, %0 ),
+		delete, 	u( switch.delete, %0, %qs ),
+		register,	u( switch.register, %0, %qs ),
+		unregister,	u( switch.unregister, %0 ),
+		alias,		u( switch.alias, %0, %qs ),
+		dial,		u( switch.dial, %0, %qs ),
+		u( .msg, Phones, Invalid switch. Valid switches are:%b[itemize(%qm)].)
+	)]
+
+-
+
+/*
+-----------------------------------------------------------------------------
+--- switch.new --------------------------------------------------------------
+
+Assign a new phone number to a character object.
+
+0: Enactor (%#)
+
+*/
+
+&switch.new #248=
+
+// Assign a new number from the system
+	[setq(0, strtrunc( trim( u( f.getnumber, %0 )), 12 ))]
+	
+	[u( .msg, Phones, Your new number is: %ch[u(f.noformat, %q0)]%cn. )]
+	
+-
+
+
+/*
+-----------------------------------------------------------------------------
+--- awitch.numbers ----------------------------------------------------------
+ 
+ 0: Enactor (%#)
+ n: List of numbers associated with the player object.
+
+*/
+
+&switch.numbers #248 = 
+
+// Grab all of the associated numbers from the database
+	[setq( n, sql( u( sql.listnumbers, %0 )))]
+	[if(
+		and(
+			not( match( trim( %qn ), #-1* )),
+			t( %qn )
+		),
+		u( 
+			display.contacts, 
+			%0, %chPersonal Numbers%cn, 
+			%qn, 
+			%ch[words(%qn)]%cn Total Entries
+		),
+		u( .msg, Phones, No numbers to list. )
+		
+	)]
+
+-
+
+
+
+
+/*
+-----------------------------------------------------------------------------
+--- switch.delete -----------------------------------------------------------
+
+0: Enactor (%#)
+1: Number for deletion
+n: re-formatted number
+o: Number Owner
+c: Potential contacts entry
+a: Potential aliases entry
+
+*/
+
+
+&switch.delete #248=
+	
+// Set registers
+	[setq(n, u( f.nodecode, %1 ))]
+	[setq(o, sql( u( sql.owner, %qn )))]
+	[setq(c, regrab( get( %0/_p_contacts ), (.*):%qn ))]
+	[setq(a, regrab( get( %0/_p_aliases ), (.*):%qn ))]
+	[switch(
+		[match( %qo, %0 )]
+		[not( match( %qn, #-* ))], 
+			0?, [u( .msg, Phone, You don't own that number. )],
+			?0, [u( .msg, Phone, That's not a good number. )],
+			11,	[sql( u( sql.deleteno, %0, %qn ))]
+
+// Remove the number from the various lists		
+				[set( %0,_p_aliases:[remove(get(%0/_p_aliases),%qa)] )]
+				[set( %0,_p_contacts:[remove(get(%0/_p_contacts),%qc)] )]
+
+// If it's the player's registered number, remove it.				
+				[if(
+					match( get( %0/_r_number ), %qn),
+					[set( %0, _r_number: )]
+					[u( .msg, Phone, You remove your listed number. )]
+				)]
+				[u( .msg, Phone, Number %ch%1%cn has been deleted. )]
+	)]
+
+-
+
+/*
+-----------------------------------------------------------------------------
+--- switch.register ---------------------------------------------------------
+
+Register a phone number as a public 'listed' number, allowing people to call
+the player with phone/dial <name>.
+
+0: Enactor (%#)
+1: Phone number
+n: Phone number unformattted
+d: dbref if the line owner
+
+*/
+
+&switch.register #248=
+
+// Set registers
+		[setq(n, u( f.nodecode, %1 ))]
+		[setq(d, sql( u( sql.owner, %qn )))]
+
+		[if(
+			match( %qd, %0 ),
+			[set( %0, _r_number:%qn )]
+			[u( .msg, Phones, Your registered number is now %ch%1%cn. )],
+			[u( .msg, Phones, You can't register that number. )]
+			
+		)]
+		
+
+-
+
+/*
+-----------------------------------------------------------------------------
+--- switch.unregister -------------------------------------------------------
+
+0: Enactor (%#)
+
+*/
+
+&switch.unregister #248 =
+
+	[if(
+		hasattr( %0, _r_number ),
+		[set( %0, _r_number: )]
+		[u( .msg, Phones, Registered number removed. )],
+		[u( .msg, Phones, You don't have a registered number. )]
+	)]
+
+ 
+ -
+ 
+ 
+ /*
+ ----------------------------------------------------------------------------
+ --- switch.alias -----------------------------------------------------------
+
+0: Enactor (%#)
+1: Carried over command
+f: First part of command
+s: Second part of command: After '='
+n: decoded number
+a: old alias entry (if one)
+o: Owner of the phone number
+
+ */
+ 
+ &switch.alias #248 = 
+ 
+	[setq(n, u( f.nodecode, %1 ))]
+	[setq(a, grab( get( %0/_p_aliases ), *:%qn ))]
+	[setq(o, sql( u( sql.owner, %qn )))]
+	[setq(f, before( %1, = ))]
+	[setq(s, after( %1, = ))]
+	
+	[if(
+		and(
+			not( match( %qn, #* )),
+			match( %0, %qo )
+		),
+		if( %qa,
+			[set( 
+				%0,
+				_p_aliases:
+				[edit( get( %0/_p_aliases ), %qa, [edit(%qs, %b, _ )]:%qn )]
+			)]
+			[u( .msg, Phones, Alias for %ch%qf%cn set to %ch%qs%cn. )],
+			[set(
+				%0,
+				_p_aliases:
+				[setunion( get( %0/_p_aliases ), [edit( %qs,%b,_ )]:%qn )]
+			)]
+			[u( .msg, Phones, Alias for %ch%qf%cn set to %ch%qs%cn. )]
+		),
+		u( .msg, Phones, You can't alias that number. )
+		
+	)]
+ 
+ -
+ 
+ 
+ 
+ /*
+ ----------------------------------------------------------------------------
+ --- switch.dial ------------------------------------------------------------
+ 
+ 0: Enactor (%#)
+ 1: name/number/contact name
+ n: decoded phone number
+ c: potenrial contact
+ d: dialed with number.
+ 
+ */
+ 
+&switch.dial #248 = 
+
+// Set registers 
+	[setq(n, u( f.nodecode, %1 ))]
+	[setq(c, regrab( get( %0/_p_contacts ), (.*):%qn ))]
+
+// Check to see if the caller either has a.) A registered number or
+// b.) Provided a number or alias.
+	[setq(  d, 
+		if( before( %1, = ),
+			before( %1, = ),
+			if( hasattr( %0, _r_number ),
+				get( %0/_r_number )
+			)
+		)
+	)]
+	
+	[switch(
+		[if( 
+			not( match( pmatch( %1 ), #-* )) ,
+			[hasattr( pmatch( %1 ), _r_number )],
+			0
+		)]
+		[t( %qc )]
+		[neq( match( num( %0 ) , sql( u( sql.owner, %qn ))), 0 )]
+		[isdbref( sql( u( sql.owner, %qn )))],
+		1?00, trigger( trigger.dial, %0, pmatch( %1 ), %qd ),
+		0101, trigger( trigger.dial, %0, %qc , %qd),
+		0011, u( .msg, Phone, You can't dial yourself. ),
+		0001, trigger( trigger.dial, %0, %qn, %qd ),
+		u( .msg, Phone, You can't dial that number. )
+		
+	)]
+	
+	
+	
+//--- trigger.dial ----------------------------------------------------------
+// 0: Caller 
+// 1: Recipient
+// 
+
+&trigger.dial #248 = 
+
+	@if isdbref( %1 ) =
+	{
+	
+// Mark who each party is talking too.
+		&_phonecall %0 = %1;
+		&_phonecall %1 = %0;
+		&_called %1 = 1;
+		
+		@pemit %0 = [u( .mag, Phone, Dialing %ch[name( %1 )]%cn. )];
+		@pemit %1 = [u( .msg, Phone, Phone call from 
+						%ch[ u( f.nolist, get( %1/_r_number ))]%cn. 
+					)];
+					
+		
+	}
+
+
+
+		
+/*
+=============================================================================
+=== FUNCTIONS ===============================================================
+
+f.validatenumber?
+f.getnumber
+f.noformat
+f.nodecode
+
+.msg
+.header
+.footer
+
+-----------------------------------------------------------------------------
+--- f.validnumber? ----------------------------------------------------------
+
+Checks against d.numbers to see if a number already exists in the system.
+
+0: Potential number
+
+*/
+
+&f.validnumber? #248 = 
+	not( 
+		sql( u( sql.numbers, %0 ))
+	)
+-
+
+/*
+-----------------------------------------------------------------------------
+--- f.getnumber -------------------------------------------------------------
+
+generate a random number and validate it against the global database.
+
+n: generated phone no.
+
+
+*/
+
+&f.getnumber #248 =
+
+// set a register with a generated number.
+	[setq( 
+		n,
+		[pickrand( v( d.areacode ))]-
+		[pickrand( v( d.prefix ))]-
+		[u( d.randomfour )]
+	)]	
+	[if(
+		u( f.validnumber?, %qn ),
+		[set( %!, d.numbers:[setunion( v( d.numbers ), %0:%qn )])]
+		[sql( u(sql.insertno, %0, %qn ))]
+		%qn,
+		u( f.getnumber )		
+	)]
+-	
+
+
+/*
+-----------------------------------------------------------------------------
+--- f.listname --------------------------------------------------------------
+
+0: Searcher (%#)
+1: Number to search
+d: #dbref of number owner
+
+*/
+
+
+&f.listname #248=
+
+// Get the owner of the line
+	[setq(d, sql( u( sql.owner, %1 )))]
+
+	[switch(	[neq( match( get(%qd/_r_number ), %1 ), 0 )]
+				[neq( match( get(%0/_r_number ), %1 ), 0 )]
+				[t( regrab( get( %0/_p_contacts ), (.*):%1 ))]
+				[t( regrab( get( %0/_p_aliases ), (.*):%1 ))],
+		0001,	regrab( get( %0/_p_aliases ), (.*):%1 )
+	)]			
+
+-
+
+/*
+-----------------------------------------------------------------------------
+--- f.noformat --------------------------------------------------------------
+
+0: Number to format
+
+*/
+
+&f.noformat #248=
+
+	[if(
+		regmatch( %0,(.*)-(.*)-(.*), 0 1 2 3 ),
+		udefault( d.numformat, %0, %q1, %q2, %q3),
+		#-1 Bad Number
+	)]
+	
+	
+
+-
+
+/*
+-----------------------------------------------------------------------------
+--- f.nodecode --------------------------------------------------------------
+
+0: Number to decode
+
+
+*/
+
+&f.nodecode #248=
+
+[if(
+
+// You have to do some rediculous escaping to get class searches to work for
+// TinyMUX gegex.  Whew!
+	regmatch( %0, (\\\\d\\\\d\\\\d).+?(\\\\d\\\\d\\\\d).+?(\\\\d\\\\d\\\\d\\\\d), 0 1 2 3 ),
+	%q1-%q2-%q3,
+	#-1 Bad Number
+)]
+
+-
+	
+/*
+-----------------------------------------------------------------------------
+--- .msg --------------------------------------------------------------------
+
+Message header.
+
+0: Message title
+1: Message body
+
+*/
+ 
+&.msg #248 = %ch<%0>%cn %1
+
+-
+
+/*
+-----------------------------------------------------------------------------
+--- .header -----------------------------------------------------------------
+
+General header for the display functions
+
+0: Title
+
+*/
+&.header #248=
+	[center(
+		[u( d.l_sep )]%b
+		[u(d.titlecolor)]%0%cn%b
+		[u( d.r_sep )],
+		38,
+		[u( d.padding )]
+	)]
+
+-
+
+
+/*
+-----------------------------------------------------------------------------
+--- .footer -----------------------------------------------------------------
+
+General footer for the display functions
+
+0: Title
+
+*/
+
+&.footer #248=
+	[center(
+		[u( d.l_sep )]%b
+		[u(d.titlecolor)]%0%cn%b
+		[u( d.r_sep )],
+		38,
+		[u( d.padding )]
+	)]
+
+-
+
+
+/*
+=============================================================================
+=== DISPLAYS ================================================================
+
+
+
+-----------------------------------------------------------------------------
+--- display.contacts --------------------------------------------------------
+
+
++phone/contacts(+phone/numbers):
+
+---------<< Phone/Contacts >>---------
+Name                      Number           
+--------------------------------------
+######################### ###-###-#### 
+######################### ###-###-####
+######################### ###-###-####
+######################### ###-###-####
+######################### ###-###-####
+----------<< ### Entries >>-----------
+
+
+0: Target
+1: Title
+2: number List
+3: Footer text
+
+*/
+
+
+&display.contacts #248 = 
+
+// Set the phonenumber length
+	[setq(0, inc( strlen( first( u( f.noformat,%2 )))))]
+
+	[u( .header, %1 )]%r
+	%ch[ljust( Name,sub(38,%q0 ))]%bNumber%cn%r
+	[repeat( u( d.padding), 38)]%r
+	[table(
+		[sort(
+			[iter(
+				%2,
+				[ljust(
+					%ch[u( trim( f.listname ), %0, ## )]%cn, 
+					sub(38,%q0 ), 
+					%ch%cx.%cn 
+				)]%b
+				%ch[ulocal( f.noformat, ## )]%cn,,|
+			)],a,|,|
+		)],38,38,|
+	)]%r
+	[u( .footer, %3 )]
+
+-
+	
+/*
+=============================================================================
+=== SQL STATEMENTS ==========================================================
+
+All of the SQL Statements nessisary to communicate with the Phone system
+database.
+
+sql.insertno
+sql.deleteno
+sql.numbers
+sql.owner
+
+
+-----------------------------------------------------------------------------
+--- sql.insertno ------------------------------------------------------------
+
+Insert new numbers into the number_database table.
+
+0: Player #dbref
+1: New phone #
+*/
+
+&sql.insertno #248 = 
+	INSERT INTO number_database ( dbref, number, active )
+	VALUES ( '%0', '%1', 1);
+
+-
+
+/*
+-----------------------------------------------------------------------------
+--- sql.deleteno ------------------------------------------------------------
+
+Delete a phone # reference from the  number_database table.
+
+0: Player #dbref
+1: Phone #
+
+*/
+
+&sql.deleteno #248 = 
+	UPDATE number_database
+	SET active = 0
+	WHERE number = '%1' AND dbref = '%0';
+	
+	
+-
+
+/*
+-----------------------------------------------------------------------------
+--- sql.numbers -------------------------------------------------------------
+
+0: player #dbref
+*/
+
+&sql.numbers #248 = 
+	SELECT dbref FROM number_database
+	WHERE number = '%0' AND active = 1
+	
+-	
+
+/*
+/*
+-----------------------------------------------------------------------------
+--- sql.owner ---------------------------------------------------------------
+
+Get the owner of a phone number
+
+0: Phone number
+
+*/
+
+&sql.owner #248=
+	SELECT dbref FROM number_database 
+	WHERE number = '%0' AND active = 1
+	
+-
+
+/*
+-----------------------------------------------------------------------------
+--- sql.listnumbers ---------------------------------------------------------
+
+0: Player dbref
+
+*/
+
+&sql.listnumbers #248 = 
+	SELECT number from number_database
+	where dbref = '%0' AND active = 1
